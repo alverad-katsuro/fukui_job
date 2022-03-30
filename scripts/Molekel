@@ -1,0 +1,6 @@
+#!/bin/sh
+export MOLEKEL_INSTALLATION_DIR=/usr/local/molekel64/
+cd $MOLEKEL_INSTALLATION_DIR
+export LD_LIBRARY_PATH=/usr/local/molekel64/lib:$LD_LIBRARY_PATH
+bin/Molekel
+

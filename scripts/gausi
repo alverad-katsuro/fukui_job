@@ -1,0 +1,19 @@
+#!/bin/bash
+
+mkdir -p $PWD/.$b
+g98root=/usr/local/
+export g98root GAUSS_SCRDIR
+GAUSS_SCRDIR=$PWD/
+. $g98root/g98/bsd/g98.profile
+tr A-Z a-z < $1 >> $1
+
+g98 $1 > $2.log
+
+s=" Normal termination of Gaussian 98."
+q="$(tail -n 1 $2.log)"
+if [ "$s" = "$q" ]
+then
+echo -e "CÁLCULO DA MOLÉCULA $1 TERMINADO COM SUCESSO. $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S)" >> log.txt
+else
+echo -e "MOLÉCULA $1 COM  --- PROBLEMAS --- . $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S). VERIFIQUE O log DE $1 PARA MAIS DETALHES" >> log.txt
+fi

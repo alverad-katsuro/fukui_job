@@ -1,0 +1,17 @@
+#!/bin/sh 
+
+# MOLEKEL points to the folder where atoms.data, help.txt and ms live.
+MOLEKEL=/usr/local/lib/molekel
+export MOLEKEL
+
+# MESA_GAMMA has an effect on the brightness of the Mesa OpenGL display
+# Values from 1 - 2.5 are accepted
+# On my SUN test terminals no GAMMA correction yields to a to dark screen
+# a value of 1.6 gives good results
+# terminal dependent, play with it
+# has no effect with native OpenGL implementations
+MESA_GAMMA=1.6
+export MESA_GAMMA
+
+# the MOLEKEL executable
+/usr/local/bin/molekel4.3.linux-mesa $*

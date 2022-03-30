@@ -1,0 +1,558 @@
+#!/bin/bash
+clear
+mkdir logs_temp
+mkdir inputs
+cp *.com inputs
+if
+ls $PWD/*.com 2> /dev/null
+then
+clear
+clear
+echo "------------------------------------------------------------ CÁLCULOS INICIADOS --------------------------------------------------------" >> log.txt
+echo "" >> log.txt
+for f in *.com; do
+    b=`basename $f .com`
+mkdir -p $PWD/.$b
+g98root=/usr/local/
+export g98root GAUSS_SCRDIR
+GAUSS_SCRDIR=$PWD/.$b
+. $g98root/g98/bsd/g98.profile
+tr A-Z a-z < $b.com >> $b1.com
+rm $b.com
+mv $b1.com $b.com
+mv $b.com .$b
+cx7="opt"
+cy7="$(grep -o opt $PWD/.$b/$b.com)"
+if [ "$cx7" = "$cy7" ]
+then
+echo O GAUSSIAN ESTÁ OTIMIZANDO A ESTRUTURA DA MOLÉCULA $b
+echo -e "\033[1m\033[31m INÍCIO: $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S) \033[m"
+echo -e USUÁRIO: $USER. MÁQUINA: $(uname -n -o)
+else
+cx8="pop=full"
+cy8="$(grep -o pop=full $PWD/.$b/$b.com)"
+if [ "$cx8" = "$cy8" ]
+then
+echo O GAUSSIAN ESTÁ REALIZANDO A ANÁLISE POPULACIONAL -MEP- DA MOLÉCULA $b
+echo -e "\033[1m\033[31m INÍCIO: $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S) \033[m"
+echo USUÁRIO: $USER. MÁQUINA: $(uname -n -o)
+else
+cx9="pop=chelpg"
+cy9="$(grep -o pop=chelpg $PWD/.$b/$b.com)"
+if [ "$cx9" = "$cy9" ]
+then
+echo O GAUSSIAN ESTÁ CALCULANDO AS CARGAS ESP DA MOLÉCULA $b
+echo -e "\033[1m\033[31m INÍCIO: $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S) \033[m"
+echo USUÁRIO: $USER. MÁQUINA: $(uname -n -o)
+else
+echo O GAUSSIAN ESTÁ CALCULANDO A MOLÉCULA $b
+echo -e "\033[1m\033[31m INÍCIO: $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S) \033[m"
+echo USUÁRIO: $USER. MÁQUINA: $(uname -n -o)
+fi
+fi
+fi
+echo "CÁLCULO DA MOLÉCULA $b INICIADO. $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S)" >> log.txt
+g98 .$b/$b.com $PWD/logs_temp/$b.out
+s=" Normal termination of Gaussian 98."
+q="$(tail -n 1 $PWD/logs_temp/$b.out)"
+if [ "$s" = "$q" ]
+then
+echo -e "CÁLCULO DA MOLÉCULA $b TERMINADO COM SUCESSO. $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S)" >> log.txt
+else
+echo -e "MOLÉCULA $b COM  --- PROBLEMAS --- . $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S). VERIFIQUE O log DE $b PARA MAIS DETALHES" >> log.txt
+fi
+cx4="opt"
+cy4="$(grep -o opt $PWD/.$b/$b.com)"
+if [ "$cx4" = "$cy4" ]
+then
+mkdir opt 
+mv $PWD/logs_temp/${b}.out $PWD/opt/$b.log
+else
+cx5="pop=full"
+cy5="$(grep -o pop=full $PWD/.$b/$b.com)"
+if [ "$cx5" = "$cy5" ]
+then
+mkdir meps 
+mv $PWD/logs_temp/${b}.out $PWD/meps
+cd meps
+#--------------------------EXTRAÇÃO DE ORBITAIS DE FRONTEIRA -- INÍCIO
+for j in *.out; do
+    c1=`basename $j .out`
+#Limpar as sujeiras:
+#Comando extrai os dados onde encontramos a palavra os orbitais
+sed -n '/Alpha  occ. eigenvalues/,/Molecular Orbital Coefficients/p' $c1.out > $c1.txt
+#Apaga a última linha
+sed '$d' $c1.txt > ${c1}a.txt
+rm ${c1}.txt
+mv ${c1}a.txt $c1.txt
+sed -n '/Alpha  occ. eigenvalues/,/Alpha virt. eigenvalues/p' $c1.txt > ${c1}_homo.txt
+sed -n '/Alpha virt. eigenvalues/,//p' $c1.txt > ${c1}_lumo.txt
+rm $c1.txt
+sed '$d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+sed "s/Alpha  occ. eigenvalues --  //g" ${c1}_homo.txt > ${c1}_homo_b.txt
+#TRANSFORMA LINHA EM COLUNA
+echo -e | sed 's/ /\n/g' ${c1}_homo_b.txt > ${c1}_homo_c.txt
+rm ${c1}_homo.txt
+rm ${c1}_homo_b.txt
+mv ${c1}_homo_c.txt ${c1}_homo.txt
+#RETIRA ESPAÇO EM BRANCO
+sed '/^$/d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#INVERTE A COLUNA
+sed '1!G;h;$!d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#EXTRAINDO AS PRIMEIRAS 10 LINHAS
+sed 11q ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#CALCULANDO OS ORBITAIS DE FRONTEIRA HOMO EM kcal/mol E eV
+mkdir .${c1}
+cp ${c1}_homo.txt .${c1}
+cd .${c1}
+csplit -k -f "" ${c1}_homo.txt "//" {10}
+clear
+rm ${c1}_homo.txt
+rm 00
+find ./ -maxdepth 1 -type f -print0 | xargs -0 -i mv {} {}.txt
+for k in *.txt; do
+d1=`basename $k .txt`
+gs=$(cat $d1.txt)
+echo $gs*27.2113961 | bc >> col2_$c1.txt
+echo $gs*627.50956 | bc >> col3_$c1.txt
+cp col2_$c1.txt col3_$c1.txt ..
+done
+cd ..
+rm -rdf .${c1}
+#FIM DO CÁLCULO DOS MO's
+
+
+echo "Orbitais de Fronteira ----HOMO e LUMO---- para a Molécula $c1" >> cabe_$c1
+echo "=====================================================================" >> cabe_$c1
+echo "   OM		  a.u	  	   eV		kcal/mol" >> cabe_$c1
+echo "---------------------------------------------------------------------" >> cabe_$c1
+echo "  HOMO  |"  >> homo_$c1
+echo "HOMO-1  |"  >> homo_$c1
+echo "HOM0-2  |"  >> homo_$c1
+echo "HOM0-3  |"  >> homo_$c1
+echo "HOM0-4  |"  >> homo_$c1
+echo "HOM0-5  |"  >> homo_$c1
+echo "HOM0-6  |"  >> homo_$c1
+echo "HOM0-7  |"  >> homo_$c1
+echo "HOM0-8  |"  >> homo_$c1
+echo "HOM0-9  |"  >> homo_$c1
+echo "HOM0-10 |" >> homo_$c1
+echo "---------------------------------------------------------------------" >> homo_$c1
+
+paste homo_$c1 ${c1}_homo.txt col2_$c1.txt col3_$c1.txt > teste_$c1
+cat cabe_$c1 teste_$c1 > teste2_$c1
+rm homo_$c1 ${c1}_homo.txt cabe_$c1 teste_$c1 col2_$c1.txt col3_$c1.txt
+sed "s/Alpha virt. eigenvalues --  //g" ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+echo -e | sed 's/ /\n/g' ${c1}_lumo.txt > ${c1}_lumo_c.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_c.txt ${c1}_lumo.txt
+sed '/^$/d' ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+#EXTRAINDO AS PRIMEIRAS 10 LINHAS
+sed 11q ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+#CALCULANDO OS ORBITAIS DE FRONTEIRA LUMO EM kcal/mol E eV
+mkdir .${c1}_lumo
+cp ${c1}_lumo.txt .${c1}_lumo
+cd .${c1}_lumo
+csplit -k -f "" ${c1}_lumo.txt "//" {10}
+clear
+rm ${c1}_lumo.txt
+rm 00
+find ./ -maxdepth 1 -type f -print0 | xargs -0 -i mv {} {}.txt
+for k in *.txt; do
+d1=`basename $k .txt`
+gs=$(cat $d1.txt)
+echo $gs*27.2113961 | bc >> col4_$c1.txt
+echo $gs*627.50956 | bc >> col5_$c1.txt
+cp col4_$c1.txt col5_$c1.txt ..
+done
+cd ..
+rm -rdf .${c1}_lumo
+#FIM DO CÁLCULO DOS MO's
+
+echo  > espaco
+echo "  LUMO  |"  >> lumo_$c1
+echo "LUMO+1  |"  >> lumo_$c1
+echo "LUM0+2  |"  >> lumo_$c1
+echo "LUM0+3  |"  >> lumo_$c1
+echo "LUM0+4  |"  >> lumo_$c1
+echo "LUM0+5  |"  >> lumo_$c1
+echo "LUM0+6  |"  >> lumo_$c1
+echo "LUM0+7  |"  >> lumo_$c1
+echo "LUM0+8  |"  >> lumo_$c1
+echo "LUM0+9  |"  >> lumo_$c1
+echo "LUM0+10 |" >> lumo_$c1
+paste lumo_$c1 ${c1}_lumo.txt espaco col4_$c1.txt col5_$c1.txt > teste_$c1
+cat cabe_$c1 teste_$c1 > teste3_$c1
+rm lumo_$c1 ${c1}_lumo.txt cabe_$c1 teste_$c1 col4_$c1.txt col5_$c1.txt espaco
+
+#----------------------------------------------------------------
+
+echo "-----------------------------------------------------------------------" >> RESUMO
+echo "---------- ALGUMAS INFORMAÇÕES IMPORTANTES PARA MOLÉCULA $c1 ----------" >> RESUMO
+echo "-----------------------------------------------------------------------" >> RESUMO
+echo "" >> RESUMO
+grep "Stoichiometry" $c1.out >> RESUMO
+grep "Standard basis" $c1.out >> RESUMO
+grep "E(RHF)" $c1.out >> RESUMO
+sed -n '/Dipole moment (Debye):/,/Quadrupole/p' $c1.out >> RESUMO
+echo "---------------------------------------------------------------------" >> RESUMO
+grep -v " Quadrupole moment (Debye-Ang):" RESUMO >> RESUMO1
+rm RESUMO
+mv RESUMO1 RESUMO
+sed "s/ Stoichiometry    /Fórmula Molecular: /g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/ Dipole moment/Momento de Dipolo/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/ Standard basis/Base Standard/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/ SCF Done:  E(RHF) =  /Energia=/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/after    5 cycles//g" RESUMO > RESUMO1 
+rm RESUMO
+sed "s/     A.U./ unidades atômicas (a. u)/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/    X=     /X=/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/    Y=     /; Y=/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/    Z=    /; Z=/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/  Tot=     /; Dipolo Total=/g" RESUMO1 > RESUMO
+rm RESUMO1
+
+
+#----------------------------------------------------------------
+
+
+cat teste2_$c1 teste3_$c1 >> RESUMO
+rm teste2_$c1 teste3_$c1
+done
+echo " " >> RESUMO
+
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" >> RESUMO
+echo " " >> RESUMO
+#--------------------------------------EXTRAÇÃO DE ORBITAIS DE FRONTEIRA -- FINAL
+mv ${b}.out ${b}.log
+cd ..
+else
+cx6="pop=chelpg"
+cy6="$(grep -o pop=chelpg $PWD/.$b/$b.com)"
+if [ "$cx6" = "$cy6" ]
+then
+mkdir cargas
+mv $PWD/logs_temp/${b}.out $PWD/cargas/
+mkdir $PWD/cargas/mol2
+babel $PWD/cargas/$b.out $PWD/cargas/$b.mol2
+#-----------------EXTRAÇÃO DE CARGAS ESP PARA O MOL2
+cd cargas
+for g in *.out; do
+    b1=`basename $g .out`
+#Limpar as sujeiras:
+#Comando extrai os dados onde encontramos a palavra ESP
+sed -n '/Fitting point charges to eletrostatic potential/,/ -----------------------------------------------------------------/p' $b1.out > $b1.txt
+#Apaga as linhas de 1 a 4
+sed '1,4d' $b1.txt > ${b1}a.txt
+rm $b1.txt
+#Apaga a última linha
+sed '$d' ${b1}a.txt >$b1.txt 
+rm ${b1}a.txt
+#Remover as 2 colunas que não interessam:
+#Remove a primeira coluna
+awk '{ $1="" ; print }' $b1.txt > $b1.txt2
+rm $b1.txt
+mv $b1.txt2 $b1.txt
+#Remove a primeira coluna restante
+awk '{ $1="" ; print }' $b1.txt > $b1.txt2
+rm $b1.txt
+sed 's/^[ \t]*//' $b1.txt2 > $b1.txt3
+rm $b1.txt2
+mv $b1.txt3 $b1.txt
+done
+for h in *.mol2; do
+    b2=`basename $h .mol2`
+#Limpar as sujeiras:
+#Comando extrai os dados das coordenadas
+sed -n '/<TRIPOS>ATOM/,/<TRIPOS>BOND/p' $b2.mol2 > ${b2}a.mol2
+#Extrai o cabeçalho do mol2 original
+sed -n '/@<TRIPOS>MOLECULE/,/@<TRIPOS>ATOM/p' $b2.mol2 > cabe
+#Extrai o rodapé do mol2 original
+sed -n '/@<TRIPOS>BOND/,//p' $b2.mol2 > roda
+#Apaga a linha 1
+sed '1d' ${b2}a.mol2 > ${b2}b.mol2
+rm ${b2}a.mol2
+#Apaga a última linha
+sed '$d' ${b2}b.mol2 >${b2}a.mol2
+#Corta a coluna 63 com as cargas de Mulliken
+cut -c-63 ${b2}a.mol2 > ${b2}b.mol2
+rm ${b2}a.mol2
+mv ${b2}b.mol2 ${b2}.mol2
+#Cola os arquivos. Começa a montagem do mol2 com as cargas ESP
+paste $b2.mol2 $b2.txt > ${b2}a.txt
+rm $b2.mol2
+rm $b2.txt
+mv ${b2}a.txt $b2.mol2
+cat cabe $b2.mol2 > ${b2}a.mol2
+rm $b2.mol2
+cat ${b2}a.mol2 roda > $b2.mol2
+rm ${b2}a.mol2
+rm cabe roda
+mv $b2.mol2 mol2
+rm *.txt
+#--------------------------EXTRAÇÃO DE ORBITAIS DE FRONTEIRA -- INÍCIO
+for j in *.out; do
+    c1=`basename $j .out`
+#Limpar as sujeiras:
+#Comando extrai os dados onde encontramos a palavra os orbitais
+sed -n '/Alpha  occ. eigenvalues/,/Molecular Orbital Coefficients/p' $c1.out > $c1.txt
+#Apaga a última linha
+sed '$d' $c1.txt > ${c1}a.txt
+rm ${c1}.txt
+mv ${c1}a.txt $c1.txt
+sed -n '/Alpha  occ. eigenvalues/,/Alpha virt. eigenvalues/p' $c1.txt > ${c1}_homo.txt
+sed -n '/Alpha virt. eigenvalues/,//p' $c1.txt > ${c1}_lumo.txt
+rm $c1.txt
+sed '$d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+sed "s/Alpha  occ. eigenvalues --  //g" ${c1}_homo.txt > ${c1}_homo_b.txt
+#TRANSFORMA LINHA EM COLUNA
+echo -e | sed 's/ /\n/g' ${c1}_homo_b.txt > ${c1}_homo_c.txt
+rm ${c1}_homo.txt
+rm ${c1}_homo_b.txt
+mv ${c1}_homo_c.txt ${c1}_homo.txt
+#RETIRA ESPAÇO EM BRANCO
+sed '/^$/d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#INVERTE A COLUNA
+sed '1!G;h;$!d' ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#EXTRAINDO AS PRIMEIRAS 10 LINHAS
+sed 11q ${c1}_homo.txt > ${c1}_homo_a.txt
+rm ${c1}_homo.txt
+mv ${c1}_homo_a.txt ${c1}_homo.txt
+#CALCULANDO OS ORBITAIS DE FRONTEIRA HOMO EM kcal/mol E eV
+mkdir .${c1}
+cp ${c1}_homo.txt .${c1}
+cd .${c1}
+csplit -k -f "" ${c1}_homo.txt "//" {10}
+clear
+rm ${c1}_homo.txt
+rm 00
+find ./ -maxdepth 1 -type f -print0 | xargs -0 -i mv {} {}.txt
+for k in *.txt; do
+d1=`basename $k .txt`
+gs=$(cat $d1.txt)
+echo $gs*27.2113961 | bc >> col2_$c1.txt
+echo $gs*627.50956 | bc >> col3_$c1.txt
+cp col2_$c1.txt col3_$c1.txt ..
+done
+cd ..
+rm -rdf .${c1}
+#FIM DO CÁLCULO DOS MO's
+echo "Orbitais de Fronteira ----HOMO e LUMO---- para a Molécula $c1" >> cabe_$c1
+echo "=====================================================================" >> cabe_$c1
+echo "   OM		  a.u	  	   eV		kcal/mol" >> cabe_$c1
+echo "---------------------------------------------------------------------" >> cabe_$c1
+echo "  HOMO  |"  >> homo_$c1
+echo "HOMO-1  |"  >> homo_$c1
+echo "HOM0-2  |"  >> homo_$c1
+echo "HOM0-3  |"  >> homo_$c1
+echo "HOM0-4  |"  >> homo_$c1
+echo "HOM0-5  |"  >> homo_$c1
+echo "HOM0-6  |"  >> homo_$c1
+echo "HOM0-7  |"  >> homo_$c1
+echo "HOM0-8  |"  >> homo_$c1
+echo "HOM0-9  |"  >> homo_$c1
+echo "HOM0-10 |" >> homo_$c1
+echo "---------------------------------------------------------------------" >> homo_$c1
+
+paste homo_$c1 ${c1}_homo.txt col2_$c1.txt col3_$c1.txt > teste_$c1
+cat cabe_$c1 teste_$c1 > teste2_$c1
+rm homo_$c1 ${c1}_homo.txt cabe_$c1 teste_$c1 col2_$c1.txt col3_$c1.txt
+sed "s/Alpha virt. eigenvalues --  //g" ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+echo -e | sed 's/ /\n/g' ${c1}_lumo.txt > ${c1}_lumo_c.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_c.txt ${c1}_lumo.txt
+sed '/^$/d' ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+#EXTRAINDO AS PRIMEIRAS 10 LINHAS
+sed 11q ${c1}_lumo.txt > ${c1}_lumo_a.txt
+rm ${c1}_lumo.txt
+mv ${c1}_lumo_a.txt ${c1}_lumo.txt
+#CALCULANDO OS ORBITAIS DE FRONTEIRA LUMO EM kcal/mol E eV
+mkdir .${c1}_lumo
+cp ${c1}_lumo.txt .${c1}_lumo
+cd .${c1}_lumo
+csplit -k -f "" ${c1}_lumo.txt "//" {10}
+clear
+rm ${c1}_lumo.txt
+rm 00
+find ./ -maxdepth 1 -type f -print0 | xargs -0 -i mv {} {}.txt
+for k in *.txt; do
+d1=`basename $k .txt`
+gs=$(cat $d1.txt)
+echo $gs*27.2113961 | bc >> col4_$c1.txt
+echo $gs*627.50956 | bc >> col5_$c1.txt
+cp col4_$c1.txt col5_$c1.txt ..
+done
+cd ..
+rm -rdf .${c1}_lumo
+#FIM DO CÁLCULO DOS MO's
+
+echo  > espaco
+echo "  LUMO  |"  >> lumo_$c1
+echo "LUMO+1  |"  >> lumo_$c1
+echo "LUM0+2  |"  >> lumo_$c1
+echo "LUM0+3  |"  >> lumo_$c1
+echo "LUM0+4  |"  >> lumo_$c1
+echo "LUM0+5  |"  >> lumo_$c1
+echo "LUM0+6  |"  >> lumo_$c1
+echo "LUM0+7  |"  >> lumo_$c1
+echo "LUM0+8  |"  >> lumo_$c1
+echo "LUM0+9  |"  >> lumo_$c1
+echo "LUM0+10 |" >> lumo_$c1
+paste lumo_$c1 ${c1}_lumo.txt espaco col4_$c1.txt col5_$c1.txt > teste_$c1
+cat cabe_$c1 teste_$c1 > teste3_$c1
+rm lumo_$c1 ${c1}_lumo.txt cabe_$c1 teste_$c1 col4_$c1.txt col5_$c1.txt espaco
+
+#----------------------------------------------------------------
+
+echo "-----------------------------------------------------------------------" >> RESUMO
+echo "---------- ALGUMAS INFORMAÇÕES IMPORTANTES PARA MOLÉCULA $c1 ----------" >> RESUMO
+echo "-----------------------------------------------------------------------" >> RESUMO
+echo "" >> RESUMO
+grep "Stoichiometry" $c1.out >> RESUMO
+grep "Standard basis" $c1.out >> RESUMO
+grep "E(RHF)" $c1.out >> RESUMO
+sed -n '/Dipole moment (Debye):/,/Quadrupole/p' $c1.out >> RESUMO
+echo "---------------------------------------------------------------------" >> RESUMO
+grep -v " Quadrupole moment (Debye-Ang):" RESUMO >> RESUMO1
+rm RESUMO
+mv RESUMO1 RESUMO
+sed "s/ Stoichiometry    /Fórmula Molecular: /g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/ Dipole moment/Momento de Dipolo/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/ Standard basis/Base Standard/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/ SCF Done:  E(RHF) =  /Energia=/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/after    5 cycles//g" RESUMO > RESUMO1 
+rm RESUMO
+sed "s/     A.U./ unidades atômicas (a. u)/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/    X=     /X=/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/    Y=     /; Y=/g" RESUMO1 > RESUMO
+rm RESUMO1
+sed "s/    Z=    /; Z=/g" RESUMO > RESUMO1
+rm RESUMO
+sed "s/  Tot=     /; Dipolo Total=/g" RESUMO1 > RESUMO
+rm RESUMO1
+
+
+#----------------------------------------------------------------
+
+
+cat teste2_$c1 teste3_$c1 >> RESUMO
+rm teste2_$c1 teste3_$c1
+done
+echo " " >> RESUMO
+
+echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" >> RESUMO
+echo " " >> RESUMO
+#--------------------------------------EXTRAÇÃO DE ORBITAIS DE FRONTEIRA -- FINAL
+
+mv ${b}.out $b.log
+done
+cd ..
+#----------------- FINAL EXTRAÇÃO DE CARGAS ESP
+else
+echo
+fi
+fi
+fi
+tr a-z A-Z < log.txt >> log1.txt
+rm log.txt
+mv log1.txt log.txt
+rm -rdf .$b
+echo "----------------------------------------------------------------------------------------------------------------------------------------" >> log.txt
+clear
+done
+echo "---------------------------------------------------------- CÁLCULOS TERMINADOS ---------------------------------------------------------" >> log.txt
+echo "" >> log.txt
+echo "" >> log.txt
+echo "" >> log.txt
+cy10="$(ls $PWD/logs_temp/*)"
+if [ "$cy10" = "0" ]
+then
+rmdir logs_temp
+else
+mkdir logs
+cp logs_temp/*.out logs
+cd logs
+for f1 in *.out; do
+    e1=`basename $f1 .out`
+mv $e1.out $e1.log
+done
+cd ..
+rm -rdf logs_temp
+fi
+cy11="$(ls $PWD/logs)"
+if [ "$cy11" != "0" ]
+then
+rmdir logs
+else
+echo
+fi
+clear
+clear
+if [ "$s1" = "$q1" ]
+then
+gedit log.txt
+else
+kwrite log.txt
+break
+fi
+clear
+echo "-----------------------------------------------"
+echo "|                                             |"
+echo "|         !!! OPERAÇÃO FINALIZADA!!!          |"
+echo "|                                             |"
+echo "-----------------------------------------------"
+echo ""
+echo "                                      Gaussian Script 2.0"
+echo "         script produzido por: "
+echo " 			          ANTONIO FLORÊNCIO DE FIGUEIREDO"
+echo "		        Laboratório de Química Teórica e Computacional - LQTC"
+echo "				    UNIVERSIDADE FEDERAL DO PARÁ"
+echo
+echo
+else
+clear
+echo -e '\e[25;25m NÃO EXISTEM MOLÉCULAS A SEREM CALCULADAS! \e[33;40m'
+echo -e '\e[28;25m NÃO EXISTEM MOLÉCULAS A SEREM CALCULADAS! \e[33;40m'
+echo -e '\e[33;25m NÃO EXISTEM MOLÉCULAS A SEREM CALCULADAS! \e[33;40m'
+echo
+fi
+echo -e "Belém, $(date +%A), $(date +%d) de $(date +%B) de $(date +%Y) às $(date +%H):$(date +%M):$(date +%S) h"
+echo

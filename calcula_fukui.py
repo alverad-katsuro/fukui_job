@@ -6,7 +6,7 @@ from uuid import uuid4
 
 
 def cria_lanza(args, job_name):
-  with open(f"{args['storage_path']}/{job_name}/lanzaAM1.sh", "w") as the_file:
+  with open(f"{args['storage_path']}/{job_name}/lanzaFukui.sh", "w") as the_file:
     the_file.write("#!/bin/bash\n")
     the_file.write(f"#SBATCH -J {job_name}\n")
     the_file.write(f"#SBATCH --time {args['time_job']}\n")
@@ -18,10 +18,10 @@ def cria_lanza(args, job_name):
     the_file.write("echo \"End job\"\n\n")
     the_file.write("date\n\n")
     the_file.write("module load gaussian/09\n\n")
-    the_file.write(f"g09 < {job_name}_am1.com > {job_name}.log\n\n")
+    the_file.write(f"g09 < {job_name}.com > {job_name}.log\n\n")
     the_file.write("date\n")
 
-def cria_com_am1(smiles, args):
+def cria_com(smiles, args):
   uid = str(uuid4())[:8]
   if not os.path.exists(args["storage_path"]):
     os.mkdir(args["storage_path"])
@@ -31,11 +31,35 @@ def cria_com_am1(smiles, args):
     if not os.path.exists(f"{args['storage_path']}/{uid}"):
       os.mkdir(f"{args['storage_path']}/{uid}")
     cordenadas = os.popen(f"obabel -:'{smile.split()[0]}' -o com --ff GAFF --gen3d -h --minimize").readlines()[4:]
-    with open(f"{args['storage_path']}/{uid}/{uid}_am1.com", "w") as com:
+    with open(f"{args['storage_path']}/{uid}/{uid}.com", "w") as com:
       com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Chk=opt1.chk\n")
       com.write("#n AM1 Opt\n\n")
       com.write(f" {uid}\n\n")
       com.writelines(cordenadas)
+      com.write("\n\n")
+      com.write("0 1\n\n")
+      com.write("--Link1--\n")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt1.chk\n")
+      com.write("%Chk=opt2.chk\n")
+      com.write("#n m062x/6-311G(d,p) Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {uid}\n\n")
+      com.write("0 1\n\n")
+      com.write("--Link2--\n")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt2.chk\n")
+      com.write("%Chk=fk+.chk\n")
+      com.write("#n m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {uid}\n\n")
+      com.write("1 2\n\n")
+      com.write("--Link3--\n")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%oldchk=opt2.chk")
+      com.write("%Chk=fk-.chk\n")
+      com.write("#n m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {uid}\n\n")
+      com.write("-1 2\n\n")
     cria_lanza(args, uid)
 
 def main(args):
@@ -47,7 +71,7 @@ def main(args):
   smiles = np.array_split(smiles, cpu_count())
   processos = []
   for _ in range(cpu_count()):
-    p = Process(target=cria_com_am1, args=(smiles.pop(), args))
+    p = Process(target=cria_com, args=(smiles.pop(), args))
     p.start()
     processos.append(p)
   for p in processos:
