@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -J 69c2a90a
+#SBATCH -J c8bbbb7c
 #SBATCH --time 5-00:00:00
 #SBATCH -p cpu
 #SBATCH --ntasks 8
@@ -14,6 +14,6 @@ date
 
 module load gaussian/09
 
-g09 < 69c2a90a.com > 69c2a90a.log
+g09 < c8bbbb7c.com > c8bbbb7c.log
 
 date
