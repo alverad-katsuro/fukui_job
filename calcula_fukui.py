@@ -20,6 +20,7 @@ def cria_lanza(args, job_name):
     the_file.write("module load gaussian/09\n\n")
     the_file.write(f"g09 < {job_name}.com > {job_name}.log\n\n")
     the_file.write("date\n")
+  os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
 
 def cria_com(smiles, args):
   uid = str(uuid4())[:8]
@@ -78,11 +79,11 @@ def main(args):
     p.join()
 
 def run_jobs():
-  pastas = [path for path in os.popen("ls").read().split("\n") if os.path.isdir(path)]
+  pastas = open("jobs/jobs_index.txt", 'r').readlines()
   for pasta in pastas:
     arquivos_na_pasta = os.popen(f'ls {pasta}/').read().split('\n')
     for arquivo in arquivos_na_pasta:
-      if "am1.com" in arquivo:
+      if ".com" in arquivo:
         os.system(f"sbatch {pasta}/{arquivo}")
 
 if __name__ == "__main__":
@@ -92,10 +93,10 @@ if __name__ == "__main__":
     parser.add_argument("--threads", "-th", help="Quantidades de Threads", type=int)
     parser.add_argument("--time-job", "-tj", help="Tempo de execucao maxima no formato SLURM", type=str)
     parser.add_argument("--queue-job", "-qj", help="Fila de execucao", type=str)
-    parser.add_argument("--run-job-am1", "-rjam1", help="Submete todos os jobs na pasta 1->Sim \033[1;93m(Este arquivo deve estar na pasta criada ao executar uma vez)\033[0;0m", type=int)
+    parser.add_argument("--run-job", "-rj", help="Submete todos os jobs na pasta 1->Sim \033[1;93m(Este arquivo deve estar na pasta criada ao executar uma vez)\033[0;0m", type=int)
     args = {k: v for k, v in vars(parser.parse_args()).items()}
     if args["storage_path"] is None:
-      args["storage_path"] = "jobs_am1"
+      args["storage_path"] = "jobs"
     elif args["storage_path"][-1] == "/":
       args["storage_path"] = args["storage_path"][:-1]
     if args["threads"] is None:
@@ -104,7 +105,7 @@ if __name__ == "__main__":
       args["queue_job"] = "cpu"
     if args["time_job"] is None:
       args["time_job"] = "5-00:00:00"
-    if args["run_job_am1"] == True:
+    if args["run_job"] == True:
       run_jobs()
     else:
       if args["smiles_file"] is None:
