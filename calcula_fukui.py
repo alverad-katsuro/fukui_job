@@ -33,21 +33,22 @@ def verifica_freq(nome_arquivo):
   matriz_verdade = []
   with open(f"frequencia.log", "a") as log:
     #cabecalho = f"{30*"#"} Frequencia do {nome_arquivo} {30*"#"}\n"
-    log.write("{aste} Frequencia do {nome_arquivo} {aste}\n".format(aste=30*"#", nome_arquivo = nome_arquivo))
+    log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_arquivo))
     for linha in frequencias:
       colunas = linha.split()
       for coluna in colunas:
         if coluna != "--":
           log.write(f"{coluna} ")
-      try:
-        matriz_verdade.append(int(file[index]))
-      except ValueError:
-        pass
+        try:
+          matriz_verdade.append(float(coluna))
+        except ValueError:
+          pass
+      log.write("\n")
     matriz_verdade.sort()
     if matriz_verdade[0] >= 0:
-      log.write("{aste}\n".format(aste=30*"#"))
-      log.write("{aste} Maior Frequencia é {maior_freq} {aste}\n".format(aste=30*"#", maior_freq = matriz_verdade[-1]))
-      log.write("{aste}\n".format(aste=30*"#"))
+      log.write("{aste}\n".format(aste=49*"#"))
+      log.write("{aste} Maior Frequencia é {maior_freq} {aste}\n".format(aste=10*"#", maior_freq = matriz_verdade[-1]))
+      log.write("{aste}\n".format(aste=49*"#"))
       exit(0)
     else:
       exit(1)
