@@ -24,12 +24,7 @@ def cria_lanza(args, job_name):
 
 
 def verifica_freq(nome_arquivo):
-  try:
-    os.path.isfile(nome_arquivo)
-    frequencias = os.popen(f"grep 'Frequencies' {nome_arquivo}").read().split("\n")
-  except TypeError:
-    print("\033[1;93mArquivo de log não encontrado!.")
-    exit(1)
+  frequencias = os.popen(f"grep 'Frequencies' {nome_arquivo}").read().split("\n")
   matriz_verdade = []
   with open(f"frequencia.log", "a") as log:
     #cabecalho = f"{30*"#"} Frequencia do {nome_arquivo} {30*"#"}\n"
@@ -128,7 +123,6 @@ def run_jobs():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Otimiza com AM1 gaussian 09\n \033[1;37mContato: \033[1;34malfredogdso@gmail.com\033[0;0m")
     parser.add_argument("--smiles-file", "-sf", help="Arquivo '.smi' com as smiles.", type=str)
-    parser.add_argument("--input-log", "-il", help="Arquivo '.log' do Gaussian.", type=str)
     parser.add_argument("--storage-path", "-st", help="Pasta para salvar os jobs", type=str)
     parser.add_argument("--threads", "-th", help="Quantidades de Threads", type=int)
     parser.add_argument("--time-job", "-tj", help="Tempo de execucao maxima no formato SLURM", type=str)
@@ -136,8 +130,6 @@ if __name__ == "__main__":
     parser.add_argument("--run-job", "-rj", help="Submete todos os jobs na pasta 1->Sim \033[1;93m(Este arquivo deve estar na pasta criada ao executar uma vez)\033[0;0m", type=int)
     parser.add_argument("--extract-freq", "-ef", help="Extrai a Frequencia do '.log' 1->Sim \033[1;93m(Cria extrai a Frequencia para a pasta atual.)\033[0;0m", type=int)
     args = {k: v for k, v in vars(parser.parse_args()).items()}
-    if args["extract_freq"] == 1:
-      verifica_freq(args["input_log"])
     if args["storage_path"] is None:
       args["storage_path"] = "jobs"
     elif args["storage_path"][-1] == "/":
