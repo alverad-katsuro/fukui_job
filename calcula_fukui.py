@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import argparse
 from multiprocessing import Process, cpu_count
 import numpy as np
@@ -34,20 +35,22 @@ def verifica_freq(nome_arquivo):
   with open(f"frequencia.log", "a") as log:
     #cabecalho = f"{30*"#"} Frequencia do {nome_arquivo} {30*"#"}\n"
     log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_arquivo))
+    log.write
     for linha in frequencias:
       colunas = linha.split()
       for coluna in colunas:
         if coluna != "--":
-          log.write(f"{coluna} ")
-        try:
-          matriz_verdade.append(float(coluna))
-        except ValueError:
-          pass
+          try:
+            log.write(f"{float(coluna):5.4f} ")
+            matriz_verdade.append(float(coluna))
+          except ValueError:
+            log.write(f"{coluna} ")
       log.write("\n")
     matriz_verdade.sort()
     if matriz_verdade[0] >= 0:
       log.write("{aste}\n".format(aste=49*"#"))
-      log.write("{aste} Maior Frequencia é {maior_freq} {aste}\n".format(aste=10*"#", maior_freq = matriz_verdade[-1]))
+      log.write("{aste} Frequencia Inicial é {menor_freq} {aste}\n".format(aste=9*"#", menor_freq = matriz_verdade[0]))
+      log.write("{aste} Frequencia Final é {maior_freq} {aste}\n".format(aste=10*"#", maior_freq = matriz_verdade[-1]))
       log.write("{aste}\n".format(aste=49*"#"))
       exit(0)
     else:
@@ -129,16 +132,15 @@ def run_jobs():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Otimiza com AM1 gaussian 09\n \033[1;37mContato: \033[1;34malfredogdso@gmail.com\033[0;0m")
     parser.add_argument("--smiles-file", "-sf", help="Arquivo '.smi' com as smiles.", type=str)
-    parser.add_argument("--input-log", "-il", help="Arquivo '.log' do Gaussian.", type=str)
     parser.add_argument("--storage-path", "-st", help="Pasta para salvar os jobs", type=str)
     parser.add_argument("--threads", "-th", help="Quantidades de Threads", type=int)
     parser.add_argument("--time-job", "-tj", help="Tempo de execucao maxima no formato SLURM", type=str)
     parser.add_argument("--queue-job", "-qj", help="Fila de execucao", type=str)
     parser.add_argument("--run-job", "-rj", help="Submete todos os jobs na pasta 1->Sim \033[1;93m(Este arquivo deve estar na pasta criada ao executar uma vez)\033[0;0m", type=int)
-    parser.add_argument("--extract-freq", "-ef", help="Extrai a Frequencia do '.log' 1->Sim \033[1;93m(Cria extrai a Frequencia para a pasta atual.)\033[0;0m", type=int)
+    parser.add_argument("--extract-freq", "-ef", help="Digite o caminho para o arquivo a fim de extrai a Frequencia do '.log' \033[1;93m(Cria extrai a Frequencia para a pasta atual.)\033[0;0m", type=str)
     args = {k: v for k, v in vars(parser.parse_args()).items()}
-    if args["extract_freq"] == 1:
-      verifica_freq(args["input_log"])
+    if not args["extract_freq"] is None:
+      verifica_freq(args["extract_freq"])
     if args["storage_path"] is None:
       args["storage_path"] = "jobs"
     elif args["storage_path"][-1] == "/":
