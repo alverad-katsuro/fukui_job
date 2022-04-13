@@ -5,10 +5,15 @@ import numpy as np
 import os
 from uuid import uuid4
 
-def generate_conf(smiles, number_confo):
+def generate_conf(smiles, number_confo:10):
   os.system(f"obabel -:'{smiles}' -o pdb -O inicio.pdb --gen3d --ff GAFF -h -minimize")
   os.system(f"obabel inicio.pdb -o pdb -O conformeros.pdb --conformer --nconf 10 --writeconformers")
-  
+  conformeros = np.array_split(open("conformeros.pdb", "r").read().split("\n")[:-1], number_confo)
+
+
+
+### energia minima apos opt -> grep HF= no reagente e produto dps (PRODUTO-REAGENTE)/627.5 = Kcal/mol
+
 
 def cria_lanza(args, job_name):
   with open(f"{args['storage_path']}/{job_name}/lanzaFukui.sh", "w") as the_file:
