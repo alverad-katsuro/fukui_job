@@ -5,6 +5,10 @@ import numpy as np
 import os
 from uuid import uuid4
 
+def generate_conf(smiles, number_confo):
+  os.system(f"obabel -:'{smiles}' -o pdb -O inicio.pdb --gen3d --ff GAFF -h -minimize")
+  os.system(f"obabel inicio.pdb -o pdb -O conformeros.pdb --conformer --nconf 10 --writeconformers")
+  
 
 def cria_lanza(args, job_name):
   with open(f"{args['storage_path']}/{job_name}/lanzaFukui.sh", "w") as the_file:
@@ -25,10 +29,9 @@ def cria_lanza(args, job_name):
 
 
 def verifica_freq(nome_arquivo):
-  try:
-    os.path.isfile(nome_arquivo)
+  if os.path.isfile(nome_arquivo) == True:
     frequencias = os.popen(f"grep 'Frequencies' {nome_arquivo}").read().split("\n")
-  except TypeError:
+  else :
     print("\033[1;93mArquivo de log não encontrado!.")
     exit(1)
   matriz_verdade = []
