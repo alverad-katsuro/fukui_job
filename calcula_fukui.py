@@ -5,12 +5,38 @@ import numpy as np
 import os
 from uuid import uuid4
 
-def generate_conf(smiles, number_confo:10):
+
+### Stagio 0 -> gera os pdb's
+### Stagio 1 -> gera os com's com opt am1
+### Stagio 2 -> gera os com's produto
+def generate_conf(smiles, job_name):
   os.system(f"obabel -:'{smiles}' -o pdb -O inicio.pdb --gen3d --ff GAFF -h -minimize")
-  os.system(f"obabel inicio.pdb -o pdb -O conformeros.pdb --conformer --nconf 10 --writeconformers")
-  conformeros = np.array_split(open("conformeros.pdb", "r").read().split("\n")[:-1], number_confo)
+  os.system(f"obabel inicio.pdb -O conformeros.pdb --conformer --nconf 10 --writeconformers")
+  print("aaaa")
+  conformeros = np.array_split(open("conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
+  print("aaaa")
+  confor_index = 0
+  while (len(conformeros) > 0):
+    conformero = conformeros.pop()
+    with open(f"{args['storage_path']}/{job_name}/0_stage_conformero_{confor_index}.pdb", "w") as pdb:
+      pdb.write("\n".join(conformero.tolist()))
+    com_in = os.popen(f"obabel {args['storage_path']}/{job_name}/0_stage_conformero_{confor_index}.pdb -o com").readlines()[2:]
+    with open(f"{args['storage_path']}/{job_name}/1_stage_conformero_{confor_index}.com", "w") as com:
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
+      com.write("# AM1 Opt\n")
+      com.write("".join(com_in))
+      com.write("\n")
+      com.write("--Link1--")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
+      com.write(f"%Chk=1_stage_conformero_{confor_index}_solv.chk\n")
+      com.write("# m062x/6-311G(d,p) scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
+      com.write(f"\n{conformero.tolist()[1]}\n")
+      com.write("0 1")
+    confor_index += 1
 
-
+    
 
 ### energia minima apos opt -> grep HF= no reagente e produto dps (PRODUTO-REAGENTE)/627.5 = Kcal/mol
 
@@ -144,6 +170,7 @@ if __name__ == "__main__":
     parser.add_argument("--threads", "-th", help="Quantidades de Threads", type=int)
     parser.add_argument("--time-job", "-tj", help="Tempo de execucao maxima no formato SLURM", type=str)
     parser.add_argument("--queue-job", "-qj", help="Fila de execucao", type=str)
+    parser.add_argument("--conf-num", "-cn", help="Quantidade de conformeros a serem usado \033[1;93m(Padrão 10.)\033[0;0m", type=int)
     parser.add_argument("--run-job", "-rj", help="Submete todos os jobs na pasta 1->Sim \033[1;93m(Este arquivo deve estar na pasta criada ao executar uma vez)\033[0;0m", type=int)
     parser.add_argument("--extract-freq", "-ef", help="Digite o caminho para o arquivo a fim de extrai a Frequencia do '.log' \033[1;93m(Cria extrai a Frequencia para a pasta atual.)\033[0;0m", type=str)
     args = {k: v for k, v in vars(parser.parse_args()).items()}
