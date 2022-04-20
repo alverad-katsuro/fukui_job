@@ -2,6 +2,7 @@
 import argparse
 from multiprocessing import Process, cpu_count
 import numpy as np
+import pandas as pd
 import os
 from uuid import uuid4
 
@@ -25,7 +26,7 @@ def generate_conf(smiles, job_name):
     with open(f"{args['storage_path']}/{job_name}/1_stage_conformero_{confor_index}.com", "w") as com:
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("# AM1 Opt freq=noraman\n")
+      com.write("# AM1 Opt\n")
       com.write(f"\n{job_name}\n")
       com.write("".join(com_in))
       com.write("\n")
@@ -40,7 +41,7 @@ def generate_conf(smiles, job_name):
 
 
 ### energia minima apos opt -> grep HF= no reagente e produto dps (PRODUTO-REAGENTE)/627.5 = Kcal/mol
-def calcula_enegia():
+def rankeamento():
   log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
   energias = {}
   while (len(log_gaus) > 0):
@@ -53,14 +54,78 @@ def calcula_enegia():
           energias[nome_arquivo].append(elemento)
     energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
   index = 0
+  ordem_melhores = sorted(energias, key=energias.get)
   with open("1_stage_rank.log", "w") as rank:
-    for key in energias.keys():
-      rank.write("{aste} RANK ENERGIA Kcal/mol {aste}\n\n".format(aste=13*"#"))
-      rank.write("RANK {index} {nome} {energia}\n".format(index = index, nome=key, energia= energias[nome_arquivo]))    
+    for key in ordem_melhores:
+      rank.write("RANK NAME ENERGY(Kcal/mol) PASS_FREQ \n\n")
+      rank.write("{index} {nome} {energia}\n".format(index = index, nome = key, energia = energias[nome_arquivo]))    
+      index += 1
+  return ordem_melhores[0]
 
 
+###### EXTRAIR O INDEX DO CHK
+## Preciso achar o melhor rank caso geral e criar 
+def calcula_freq():
+  global args
+  ranks = pd.read_csv('1_stage_rank.log', sep=' ')
+  melhor = ranks.loc[ranks.PASS_FREQ.isnull()].iloc[0]
+  nome = melhor["NAME"].split('.')[0]
+  with open(f"2_stage_rank_{melhor['RANK']}.com", "w") as com:
+    com.write(f"%NProcShared={args['threads']}\n")
+    com.write(f"%Oldchk=1_stage_conformero_{melhor['RANK']}.chk\n")
+    com.write("%Chk=opt1.chk\n")
+    com.write("# AM1 Opt freq=noraman geom=check\n\n")
+    com.write(f" {nome}\n\n")
+    com.write("0 1\n")
 
-
+def cria_com(smiles, job_name):
+  global args
+  if not os.path.exists(args["storage_path"]):
+    os.mkdir(args["storage_path"])
+  smiles = smiles.tolist()
+  while (len(smiles) != 0):
+    smile = smiles.pop()
+    if not os.path.exists(f"{args['storage_path']}/{job_name}"):
+      os.mkdir(f"{args['storage_path']}/{job_name}")
+    cordenadas = os.popen(f"obabel -:'{smile.split()[0]}' -o com --ff GAFF --gen3d -h --minimize").readlines()[6:]
+    os.system(f"cp {os.getcwd()}/{__file__} {args['storage_path']}/{job_name}/{job_name}")
+    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_1.com", "w") as com:
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Chk=opt1.chk\n")
+      com.write("# AM1 Opt freq=noraman\n\n")
+      com.write(f" {job_name}\n\n")
+      com.write("0 1\n")
+      com.writelines(cordenadas)
+      com.write("\n")
+    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_2.com", "w") as com:
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt1.chk\n")
+      com.write("%Chk=opt2.chk\n")
+      com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {job_name}\n\n")
+      com.write("0 1\n\n")
+    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_3.com", "w") as com:
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt2.chk\n")
+      com.write("%Chk=fk+.chk\n")
+      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {job_name}\n\n")
+      com.write("1 2\n\n")
+      com.write("--Link1--\n")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt2.chk\n")
+      com.write("%Chk=fk-.chk\n")
+      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {job_name}\n\n")
+      com.write("-1 2\n\n")
+      com.write("--Link1--\n")
+      com.write(f"%NProcShared={args['threads']}\n")
+      com.write("%Oldchk=opt2.chk\n")
+      com.write("%Chk=fk0.chk\n")
+      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {job_name}\n\n")
+      com.write("0 2\n\n")
+    cria_lanza(args, job_name)
 
 def cria_lanza(args, job_name):
   with open(f"{args['storage_path']}/{job_name}/lanzaFukui.sh", "w") as the_file:
@@ -111,54 +176,7 @@ def verifica_freq(nome_arquivo):
       exit(1)
 
 
-def cria_com(smiles, job_name):
-  global args
-  if not os.path.exists(args["storage_path"]):
-    os.mkdir(args["storage_path"])
-  smiles = smiles.tolist()
-  while (len(smiles) != 0):
-    smile = smiles.pop()
-    if not os.path.exists(f"{args['storage_path']}/{job_name}"):
-      os.mkdir(f"{args['storage_path']}/{job_name}")
-    cordenadas = os.popen(f"obabel -:'{smile.split()[0]}' -o com --ff GAFF --gen3d -h --minimize").readlines()[6:]
-    os.system(f"cp {os.getcwd()}/{__file__} {args['storage_path']}/{job_name}/{job_name}")
-    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_1.com", "w") as com:
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write("%Chk=opt1.chk\n")
-      com.write("# AM1 Opt freq=noraman\n\n")
-      com.write(f" {job_name}\n\n")
-      com.write("0 1\n")
-      com.writelines(cordenadas)
-      com.write("\n")
-    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_2.com", "w") as com:
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write("%Oldchk=opt1.chk\n")
-      com.write("%Chk=opt2.chk\n")
-      com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {job_name}\n\n")
-      com.write("0 1\n\n")
-    with open(f"{args['storage_path']}/{job_name}/{job_name}_stage_3.com", "w") as com:
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write("%Oldchk=opt2.chk\n")
-      com.write("%Chk=fk+.chk\n")
-      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {job_name}\n\n")
-      com.write("1 2\n\n")
-      com.write("--Link1--\n")
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write("%Oldchk=opt2.chk\n")
-      com.write("%Chk=fk-.chk\n")
-      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {job_name}\n\n")
-      com.write("-1 2\n\n")
-      com.write("--Link1--\n")
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write("%Oldchk=opt2.chk\n")
-      com.write("%Chk=fk0.chk\n")
-      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {job_name}\n\n")
-      com.write("0 2\n\n")
-    cria_lanza(args, job_name)
+
 
 def sub_rotina(smiles):
   global args
