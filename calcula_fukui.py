@@ -221,6 +221,7 @@ def main():
     processos.append(p)
   for p in processos:
     p.join()
+  exit(0)
 
 def creditos():
   print("\033[1;35m{aste}".format(aste=('*'*69)))
@@ -229,6 +230,13 @@ def creditos():
   print("\033[1;35m{aste} \033[1;93mFluxo Lógica - Carlos Gabriel   \033[1;35m{aste}".format(aste=('*'*18)))
   print("\033[1;35m{aste} \033[1;93mFluxo Lógica - Clauber Henrique \033[1;35m{aste}".format(aste=('*'*18)))
   print("\033[1;35m{aste}".format(aste=('*'*69)))
+  exit(0)
+
+def help_full():
+  print("A ser desenvolvido")
+  print("Funções marcadas com OBS são chamadas pelo slurm")
+  print("Só as use se ja tiver completado as etapas anteriores")
+  exit(0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Otimiza com AM1 gaussian 09\n \033[1;37mContato: \033[1;34malfredogdso@gmail.com\033[0;0m")
@@ -237,25 +245,45 @@ if __name__ == "__main__":
     parser.add_argument("--threads", "-th", help="Quantidades de Threads \033[1;93m(Padrão 8)\033[0;0m", type=int)
     parser.add_argument("--time-job", "-tj", help="Tempo de execucao maxima no formato SLURM \033[1;93m(Padrão 5-00:00:00)\033[0;0m", type=str)
     parser.add_argument("--queue-job", "-qj", help="Fila de execucao \033[1;93m(Padrão 'cpu')\033[0;0m", type=str)
-    parser.add_argument("--storage-path", "-st", help="Pasta para salvar os jobs", type=str)
+    parser.add_argument("--storage-path", "-sp", help="Pasta para salvar os jobs", type=str)
     parser.add_argument("--extract-freq", "-ef", help="Digite o caminho para o arquivo a fim de extrai a Frequencia do '.log' \033[1;93m(Cria extrai a Frequencia para a pasta atual.)\033[0;0m", type=str)
-    parser.add_argument("--ranking", "-r", help="Realiza o Rankemanto com base no (Produto - Reagente)/627.5", type=int)
-    parser.add_argument("--calc-freq", "-cfreq", help="Calcula a Frequencia", type=int)
-    parser.add_argument("--calc-fukui", "-cfukui", help="Calcula o índice de Fukui", type=int)
-    parser.add_argument("--run-job", "-rj", help="Submete todos os jobs na pasta 1->Sim", type=int)
+    parser.add_argument("--ranking", "-r", help="Realiza o Rankemanto com base no (Produto - Reagente)/627.5 \033[1;93m(1 -> Sim) OBS:Função Interna\033[0;0m", type=int)
+    parser.add_argument("--calc-freq", "-cfreq", help="Calcula a Frequencia \033[1;93m(1 -> Sim) OBS:Função Interna\033[0;0m", type=int)
+    parser.add_argument("--calc-fukui", "-cfukui", help="Calcula o índice de Fukui \033[1;93m(1 -> Sim) OBS:Função Interna\033[0;0m", type=int)
+    parser.add_argument("--run-jobs", "-rj", help="Submete todos os jobs na pasta \033[1;93m(1 -> Sim) OBS:Função Interna\033[0;0m", type=int)
+    parser.add_argument("--help-full", "-hf", help="Descreve algumas flags \033[1;93m(1 -> Sim) OBS:Função Interna\033[0;0m", type=int)
     args = {k: v for k, v in vars(parser.parse_args()).items()}
     if not args["extract_freq"] is None:
       verifica_freq(args["extract_freq"])
+      exit(0)
     if args["storage_path"] is None:
       args["storage_path"] = "jobs"
+    elif args["storage_path"][0] == "/":
+      args["storage_path"] = f"{args['storage_path']}"
     elif args["storage_path"][-1] == "/":
-      args["storage_path"] = args["storage_path"][:-1]
+      args["storage_path"] = f"{os.environ['PWD']}/{args['storage_path'][:-1]}"
+    else:
+      args["storage_path"] = f"{os.environ['PWD']}/{args['storage_path']}"
     if args["threads"] is None:
       args["threads"] = 8
+    if args["conf_num"] is None:
+      args["conf_num"] = 10
     if args["queue_job"] is None:
       args["queue_job"] = "cpu"
     if args["time_job"] is None:
       args["time_job"] = "5-00:00:00"
-    if args["run_job"] == True:
+    if args["run_jobs"] == True:
       run_jobs()
+    if args["calc_freq"] == True:
+      calcula_freq()
+    if args["calc_fukui"] == True:
+      calcula_fukui()
+    if args["ranking"] == True:
+      rankeamento()
+    if args["help_full"] == True:
+      help_full()
+    if not args["smiles-file"] is None:
+      main()
+      
+    print(args)
     creditos()
