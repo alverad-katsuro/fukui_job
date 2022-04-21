@@ -282,8 +282,7 @@ if __name__ == "__main__":
       rankeamento()
     if args["help_full"] == True:
       help_full()
-    if not args["smiles-file"] is None:
+    if not args["smiles_file"] is None:
       main()
-      
     print(args)
     creditos()
