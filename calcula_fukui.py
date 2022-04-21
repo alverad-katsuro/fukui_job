@@ -13,31 +13,29 @@ from uuid import uuid4
 def generate_conf(smiles, job_name):
   global args
   print("\033[1;93mGerando PDB\n\033[0;0m")
-  os.system(f"obabel -:'{smiles}' -o pdb -O inicio.pdb --gen3d --ff GAFF -h -minimize")
+  os.system(f"obabel -:'{smiles}' -o pdb -O {args['storage_path']}/{job_name}/pdb/inicio.pdb --gen3d --ff GAFF -h -minimize")
   print("\033[1;93mGerando Conformeros\n\033[0;0m")
-  os.system(f"obabel inicio.pdb -O conformeros.pdb --conformer --nconf 10 --writeconformers")
-  conformeros = np.array_split(open("conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
+  os.system(f"obabel {args['storage_path']}/{job_name}/pdb/inicio1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros.pdb --conformer --nconf 10 --writeconformers")
+  conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
   confor_index = 0
   print("\033[1;93mEscrevendo os Conformeros\n\033[0;0m")
   while (len(conformeros) > 0):
     conformero = conformeros.pop()
     with open(f"{args['storage_path']}/{job_name}/pdb/0_stage_conformero_{confor_index}.pdb", "w") as pdb:
       pdb.write("\n".join(conformero.tolist()))
-    com_in = os.popen(f"obabel {args['storage_path']}/pdb/{job_name}/0_stage_conformero_{confor_index}.pdb -o com").readlines()[2:]
+    com_in = os.popen(f"obabel {args['storage_path']}/{job_name}/pdb/0_stage_conformero_{confor_index}.pdb -o com").readlines()[4:]
     with open(f"{args['storage_path']}/{job_name}/1_stage_conformero_{confor_index}.com", "w") as com:
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("# AM1 Opt\n")
-      com.write(f"\n{job_name}\n")
+      com.write("#n AM1 Opt\n")
+      com.write(f"\n {job_name}\n")
       com.write("".join(com_in))
-      com.write("\n")
-      com.write("--Link1--")
+      com.write("--Link1--\n")
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}_solv.chk\n")
-      com.write("# m062x/6-311G(d,p) scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
-      com.write(f"\n{job_name}\n")
-      com.write("0 1")
+      com.write("#n m062x/6-311G(d,p) scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
+      com.write("\n0  1")
     confor_index += 1
   print("\033[1;93mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;0m")
 
@@ -179,48 +177,59 @@ def cria_lanza(job_name):
     the_file.write("echo \"End job\"\n\n")
   os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
 
-def sub_rotina(smiles):
-  global args
-  while (len(smiles) > 0):
-    job_name = str(uuid4())[:8]
-    if not os.path.exists("{storage_path}/{job_name}".format(storage_path = args["storage_path"], job_name = job_name)):
-      os.makedirs("{storage_path}/{job_name}".format(storage_path = args["storage_path"], job_name = job_name))
-    generate_conf(smiles.pop(), job_name)
-    cria_lanza(job_name)
-
 def create_run_all():
-  with open("jobs/run_all.py", 'w') as run_all:
+  global args
+  with open(f"{args['storage_path']}/run_all.py", 'w') as run_all:
     run_all.write("#!/usr/bin/python3\n")
     run_all.write("import os\n")
     run_all.write("pwd=os.environ['PWD']\n")
     run_all.write("pastas=os.popen('ls').read().split('\\n')\n")
     run_all.write("for pasta in pastas:\n")
-    run_all.write("  os.chdir(f'{pwd}/{pasta}')\n")
-    run_all.write("  os.system('sbatch lanzaFukui.sh')\n")
+    run_all.write("  try:")
+    run_all.write("    os.chdir(f'{pwd}/{pasta}')\n")
+    run_all.write("    os.system('sbatch lanzaFukui.sh')\n")
+    run_all.write("  except NotADirectoryError:")
+    run_all.write("    pass')\n")
+  os.system(f"chmod +x {args['storage_path']}/run_all.py")
 
 def run_jobs():
   global args
   os.chdir(f"{os.environ['PWD']}/{args['storage_path']}")
   os.system("./run_all.py")
 
+def sub_rotina(smiles):
+  global args
+  print(smiles)
+  while (len(smiles) > 0):
+    job_name = str(uuid4())[:8]
+    if not os.path.exists("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name)):
+      os.makedirs("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name))
+    generate_conf(smiles.pop(), job_name)
+    cria_lanza(job_name)
+
 def main():
   global args
   try:
-    smiles = open(args["smiles_file"], "r").readlines()
+    smiles = open(args["smiles_file"], "r").read()
+    if "\\n" in smiles:
+      smiles = smiles.split("\n")[:-1]
+    else:
+      smiles = [smiles]
   except:
     print("\033[1;93mVerifique se o arquivo existe!!!\033[0;81m")
     exit(1)
   if not os.path.exists("{storage_path}".format(storage_path = args["storage_path"])):
       os.makedirs("{storage_path}".format(storage_path = args["storage_path"]))
-  create_run_all()
   smiles = np.array_split(smiles, cpu_count())
   processos = []
   for _ in range(cpu_count()):
-    p = Process(target=sub_rotina, args=(smiles.pop().tolist()))
-    p.start()
-    processos.append(p)
+    if len(smiles) > 0:
+      p = Process(target=sub_rotina, args=([smiles.pop().tolist()]))
+      p.start()
+      processos.append(p)
   for p in processos:
     p.join()
+  create_run_all()
   exit(0)
 
 def creditos():
