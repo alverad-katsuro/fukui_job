@@ -317,5 +317,4 @@ if __name__ == "__main__":
       help_full()
     if not args["smiles_file"] is None:
       main()
-    print(args)
     creditos()
