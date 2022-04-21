@@ -34,8 +34,9 @@ def generate_conf(smiles, job_name):
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}_solv.chk\n")
-      com.write("#n m062x/6-311G(d,p) scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
-      com.write("\n0  1")
+      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
+      com.write(f"\n {job_name}_solv\n")
+      com.write("\n0  1\n")
     confor_index += 1
   print("\033[1;93mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;0m")
 
@@ -46,12 +47,17 @@ def rankeamento():
   while (len(log_gaus) > 0):
     nome_arquivo = log_gaus.pop()
     energias[nome_arquivo] = []
-    grep = os.popen(f"grep 'HF=' {nome_arquivo}").split()
+    grep = os.popen(f"grep 'HF=' {nome_arquivo}").readlines()
     for linhas in grep:
       for elemento in linhas.split("\\"):
         if "HF=" in elemento:
           energias[nome_arquivo].append(elemento)
-    energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
+    try:
+      energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
+    except IndexError:
+      print("Erro no rankeamento, um dos calculos não rodou(product ou reagent)")
+      os.system("echo 'export STATUS_FREQ = 'ERROR_RANK'' > control/variables_status_freq.variables")
+      exit(1)
   rank = 0
   ordem_melhores = sorted(energias, key=energias.get)
   print("\033[1;93mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;0m")
@@ -104,12 +110,18 @@ def calcula_freq():
     if (verifica_freq(ranks.loc[status_index, "NAME"])):
       ranks.loc[status_index, "STATUS_FREQ"] = "Pass"
       ranks.to_csv("1_stage_rank.log", sep=' ')
-      os.environ["STATUS_FREQ"] = "TRUE"
+      os.system("echo 'export STATUS_FREQ = 'TRUE'' > control/variables_status_freq.variables")
       exit(0)
     else:
       ranks.loc[status_index, "STATUS_FREQ"] = "Failed"
   print("\033[1;93mCalculando Frequencia\n\033[0;0m")
-  rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK').index[0]
+  rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK')
+  if len(rank_usado) == 0:
+    os.system("echo 'export STATUS_FREQ = 'NO_FREQ'' > control/variables_status_freq.variables")
+    print("Todos possuem frequencia negativa")
+    exit(0)
+  else:
+    rank_usado = rank_usado.index[0]
   nome = ranks.loc[rank_usado, 'NAME']
   with open(f"2_stage_rank_{rank_usado}.com", "w") as com:
     com.write(f"%NProcShared={os.environ['SLURM_NTASKS']}\n")
@@ -166,16 +178,25 @@ def cria_lanza(job_name):
     the_file.write("module load gaussian/09\n\n")
     the_file.write("export STATUS_FREQ=FALSE\n\n")
     for confor_index in range(args["conf_num"]):
-      the_file.write(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log\n\n")
-    the_file.write("calcula_fukui.py --ranking 1")
-    the_file.write("while [[ $STATUS_FREQ = 'FALSE' ]]")
-    the_file.write("do")
-    the_file.write("calcula_fukui.py --calc-freq 1")
-    the_file.write("done")
-    the_file.write("calcula_fukui.py --calc-fukui 1")
+      the_file.write(f"echo '1_stage_conformero_{confor_index}.com' &&\n")
+      the_file.write(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log &&\n")
+    the_file.write(f"echo 'Calculando RANK'\n")
+    the_file.write("./calcula_fukui.py --ranking 1\n")
+    the_file.write("source control/variables_status_freq.variables\n")
+    the_file.write(f"echo 'Buscando frequencia não negativa'\n")
+    the_file.write("while [[ $STATUS_FREQ = 'FALSE' ]]\n")
+    the_file.write("do\n")
+    the_file.write("./calcula_fukui.py --calc-freq 1\n")
+    the_file.write("source control/variables_status_freq.variables\n")
+    the_file.write("done\n")
+    the_file.write("if [[ $STATUS_FREQ = 'TRUE' ]]\n")
+    the_file.write("then\n")
+    the_file.write(f"echo 'Achei a frequencia'\n")
+    the_file.write(f"echo 'Calculando Fukui'\n")
+    the_file.write("./calcula_fukui.py --calc-fukui 1\n")
+    the_file.write("fi\n")
     the_file.write("date\n")
     the_file.write("echo \"End job\"\n\n")
-  os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
 
 def create_run_all():
   global args
@@ -183,13 +204,13 @@ def create_run_all():
     run_all.write("#!/usr/bin/python3\n")
     run_all.write("import os\n")
     run_all.write("pwd=os.environ['PWD']\n")
-    run_all.write("pastas=os.popen('ls').read().split('\\n')\n")
+    run_all.write("pastas=open('jobs_index.txt', 'r').read().split('\\n')[:-1]\n")
     run_all.write("for pasta in pastas:\n")
-    run_all.write("  try:")
+    run_all.write("  try:\n")
     run_all.write("    os.chdir(f'{pwd}/{pasta}')\n")
     run_all.write("    os.system('sbatch lanzaFukui.sh')\n")
-    run_all.write("  except NotADirectoryError:")
-    run_all.write("    pass')\n")
+    run_all.write("  except NotADirectoryError:\n")
+    run_all.write("    pass\n")
   os.system(f"chmod +x {args['storage_path']}/run_all.py")
 
 def run_jobs():
@@ -199,13 +220,16 @@ def run_jobs():
 
 def sub_rotina(smiles):
   global args
-  print(smiles)
   while (len(smiles) > 0):
     job_name = str(uuid4())[:8]
     if not os.path.exists("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name)):
       os.makedirs("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name))
+    if not os.path.exists("{storage_path}/{job_name}/control".format(storage_path = args["storage_path"], job_name = job_name)):
+      os.makedirs("{storage_path}/{job_name}/control".format(storage_path = args["storage_path"], job_name = job_name))
     generate_conf(smiles.pop(), job_name)
     cria_lanza(job_name)
+    os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
+    os.system(f"cp {__file__} {args['storage_path']}/{job_name}/")
 
 def main():
   global args

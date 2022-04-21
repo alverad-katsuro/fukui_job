@@ -1,4 +1,4 @@
 *.chk
 *.log
 jobs/run_all.py
-jobs/*
+jobs
