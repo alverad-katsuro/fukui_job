@@ -71,7 +71,7 @@ def rankeamento():
     ordem_melhores = sorted(energias, key=energias.get)
     print("\033[1;34mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;30m", flush=True)
     with open("1_stage_rank.log", "w") as rank:
-      rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ\n")
+      rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ STATUS_FUKUI\n")
       for key in ordem_melhores:
         rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[nome_arquivo]))    
         rank_index += 1
@@ -182,8 +182,9 @@ def calcula_fukui():
       com.write("%Chk=fk0.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
       com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
-      com.write("0 2\n\n")
+      com.write("0 1\n\n")
     os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
+    ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
   elif len(ligante) > 1:
     print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
 
