@@ -275,7 +275,7 @@ def run_job():
     print("\033[1;34mCalculando Fukui\033[0;30m", flush=True)
     terminou = calcula_fukui()
     if terminou:
-      os.system(f"mv {os.environ['PDW']} {os.environ['PDW']}_done")
+      os.system(f"mv {os.environ['PDW']} done_{os.environ['PDW']}")
   creditos()
 
 def main():
