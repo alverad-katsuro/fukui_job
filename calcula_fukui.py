@@ -119,13 +119,13 @@ def verifica_freq(nome_do_arquivo):
 ## Preciso achar o melhor rank caso geral e criar 
 def calcula_freq():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
-  atualiza_status = ranks.query("STATUS_FREQ == 'calculate'").index
+  status_calculate = ranks.query("STATUS_FREQ == 'calculate'").index
   if len(ranks.query("STATUS_FREQ == 'Pass'")) > 0:
     print("\033[1;33mPulando calculo de Frequencia, já existe um que atende os requisitos\n\033[0;30m", flush=True)
     os.environ["STATUS_FREQ"] = "TRUE"
-  elif len(atualiza_status) > 0:
+  elif len(status_calculate) > 0:
     print("\033[1;34mAtualizando 'log' Frequencia -> frequencia.log\n\033[0;30m", flush=True)
-    rank_usado = atualiza_status[0]
+    rank_usado = status_calculate[0]
     return_freq = verifica_freq(f"2_stage_rank_{rank_usado}.log")
     if return_freq == 'ERROR':
       pass
@@ -135,6 +135,8 @@ def calcula_freq():
       os.environ["STATUS_FREQ"] = "TRUE"
     else:
       ranks.loc[rank_usado, "STATUS_FREQ"] = "Failed"
+      ranks.to_csv("1_stage_rank.log", sep=' ')
+      print("\033[1;34mTodos possuem frequencia negativa\033[1;30m", flush=True)
   else:
     print("\033[1;34mCalculando Frequencia\n\033[0;30m", flush=True)
     rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK')
