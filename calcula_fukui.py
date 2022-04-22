@@ -39,132 +39,147 @@ def generate_conf(smiles, job_name):
   print("\033[1;32mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;30m", flush=True)
 
 def rankeamento():
-  print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;30m", flush=True)
-  log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
-  if len(log_gaus) == 0:
-    log_gaus = os.popen("ls 1_stage/1_stage_conformero_*.log").read().split()
-  energias = {}
-  while (len(log_gaus) > 0):
-    nome_arquivo = log_gaus.pop()
-    energias[nome_arquivo] = []
-    grep = os.popen(f"grep -A 1 'HF' {nome_arquivo}").read().split('\\')
-    for elemento in grep:
-      if "HF" in elemento:
-        energias[nome_arquivo].append(elemento.replace("\n ", ""))
-    try:
-      energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
-    except IndexError:
-      print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou(product ou reagent)\033[0;30m", flush=True)
-      energias.pop(nome_arquivo)
-  if len(energias.keys()) == 0:
-    os.environ["STATUS_FREQ"] = "ERROR_RANK"
-    exit(1)
-  else:
+  if os.path.isfile("1_stage_rank.log") == True:
+    print(f"\033[1;33mRANK já existente, pulando etapa\033[0;30m", flush=True)
     os.environ["STATUS_FREQ"] = "FALSE"
-  rank_index = 0
-  ordem_melhores = sorted(energias, key=energias.get)
-  print("\033[1;34mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;30m", flush=True)
-  with open("1_stage_rank.log", "w") as rank:
-    rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ\n")
-    for key in ordem_melhores:
-      rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[nome_arquivo]))    
-      rank_index += 1
+  else:
+    print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;30m", flush=True)
+    log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
+    if len(log_gaus) == 0:
+      log_gaus = os.popen("ls 1_stage/1_stage_conformero_*.log").read().split()
+    energias = {}
+    while (len(log_gaus) > 0):
+      nome_arquivo = log_gaus.pop()
+      energias[nome_arquivo] = []
+      grep = os.popen(f"grep -A 1 'HF' {nome_arquivo}").read().split('\\')
+      for elemento in grep:
+        if "HF" in elemento:
+          energias[nome_arquivo].append(elemento.replace("\n ", ""))
+      try:
+        energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
+      except IndexError:
+        print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou(product ou reagent)\033[0;30m", flush=True)
+        energias.pop(nome_arquivo)
+    if len(energias.keys()) == 0:
+      os.environ["STATUS_FREQ"] = "ERROR_RANK"
+      exit(1)
+    else:
+      os.environ["STATUS_FREQ"] = "FALSE"
+    rank_index = 0
+    ordem_melhores = sorted(energias, key=energias.get)
+    print("\033[1;34mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;30m", flush=True)
+    with open("1_stage_rank.log", "w") as rank:
+      rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ\n")
+      for key in ordem_melhores:
+        rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[nome_arquivo]))    
+        rank_index += 1
 
-def verifica_freq(nome_arquivo):
-  if os.path.isfile(nome_arquivo) == True:
-    frequencias = os.popen(f"grep 'Frequencies' {nome_arquivo}").read().split("\n")[-1]
+def verifica_freq(nome_do_arquivo):
+  global args
+  if os.path.isfile(nome_do_arquivo) == True:
+    frequencias = os.popen(f"grep 'Frequencies' {nome_do_arquivo}").read().split("\n")[:-1]
     if len(frequencias) == 0:
       ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
-      status_index = ranks.query("STATUS_FREQ == 'calculate'").index[0]
-      ranks.loc[status_index, "STATUS_FREQ"] = np.NaN
-      ranks.to_csv("1_stage_rank.log", sep=' ')
-      return "ERROR"
-  else :
+      status = ranks.query("STATUS_FREQ == 'calculate'")
+      if (len(status)) == 0:
+        print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;30m", flush=True)
+        return "ERROR"
+      else:
+        ranks.loc[status.index[0], "STATUS_FREQ"] = "ERROR"
+        ranks.to_csv("1_stage_rank.log", sep=' ')
+        return "ERROR"
+    else:
+      matriz_verdade = []
+      print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;30m", flush=True)
+      with open(f"frequencia.log", "a") as log:
+        log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_do_arquivo))
+        log.write
+        for linha in frequencias:
+          colunas = linha.split()
+          for coluna in colunas:
+            if coluna != "--":
+              try:
+                log.write(f"{float(coluna):5.4f} ")
+                matriz_verdade.append(float(coluna))
+              except ValueError:
+                log.write(f"{coluna} ")
+          log.write("\n")
+        matriz_verdade.sort()
+        log.write("\n{aste}\n".format(aste=49*"#"))
+        log.write("{aste} Frequencia Inicial é {menor_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", menor_freq = matriz_verdade[0]))
+        log.write("{aste} Frequencia Final é {maior_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", maior_freq = matriz_verdade[-1]))
+        log.write("{aste}\n".format(aste=49*"#"))
+        return matriz_verdade[0]
+  else:
     print("\033[1;33mArquivo de log não encontrado!.\n\033[0;30m", flush=True)
     exit(1)
-  matriz_verdade = []
-  print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;30m", flush=True)
-  with open(f"frequencia.log", "a") as log:
-    log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_arquivo))
-    log.write
-    for linha in frequencias:
-      colunas = linha.split()
-      for coluna in colunas:
-        if coluna != "--":
-          try:
-            log.write(f"{float(coluna):5.4f} ")
-            matriz_verdade.append(float(coluna))
-          except ValueError:
-            log.write(f"{coluna} ")
-      log.write("\n")
-    matriz_verdade.sort()
-    log.write("{aste}\n".format(aste=49*"#"))
-    log.write("{aste} Frequencia Inicial é {menor_freq} {aste}\n".format(aste=9*"#", menor_freq = matriz_verdade[0]))
-    log.write("{aste} Frequencia Final é {maior_freq} {aste}\n".format(aste=10*"#", maior_freq = matriz_verdade[-1]))
-    log.write("{aste}\n".format(aste=49*"#"))
-    return matriz_verdade[0]
 
 ## Preciso achar o melhor rank caso geral e criar 
 def calcula_freq():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
   atualiza_status = ranks.query("STATUS_FREQ == 'calculate'").index
-  if len(atualiza_status) > 0:
+  if len(ranks.query("STATUS_FREQ == 'Pass'")) > 0:
+    print("\033[1;33mPulando calculo de Frequencia, já existe um que atende os requisitos\n\033[0;30m", flush=True)
+    os.environ["STATUS_FREQ"] = "TRUE"
+  elif len(atualiza_status) > 0:
     print("\033[1;34mAtualizando 'log' Frequencia -> frequencia.log\n\033[0;30m", flush=True)
-    status_index = atualiza_status[0]
-    return_freq = verifica_freq(ranks.loc[status_index, "NAME"])
+    rank_usado = atualiza_status[0]
+    return_freq = verifica_freq(f"2_stage_rank_{rank_usado}.log")
     if return_freq == 'ERROR':
       pass
-    elif return_freq > 0:
-      ranks.loc[status_index, "STATUS_FREQ"] = "Pass"
+    elif return_freq >= 0:
+      ranks.loc[rank_usado, "STATUS_FREQ"] = "Pass"
       ranks.to_csv("1_stage_rank.log", sep=' ')
       os.environ["STATUS_FREQ"] = "TRUE"
     else:
-      ranks.loc[status_index, "STATUS_FREQ"] = "Failed"
-  print("\033[1;34mCalculando Frequencia\n\033[0;30m", flush=True)
-  rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK')
-  if len(rank_usado) == 0:
-    os.environ["STATUS_FREQ"] = "NO_FREQ"
-    print("\033[1;34mTodos possuem frequencia negativa\033[1;30m", flush=True)
+      ranks.loc[rank_usado, "STATUS_FREQ"] = "Failed"
   else:
-    rank_usado = rank_usado.index[0]
-  nome = ranks.loc[rank_usado, 'NAME']
-  with open(f"2_stage_rank_{rank_usado}.com", "w") as com:
-    com.write(f"%NProcShared={os.environ['threads']}\n")
-    com.write(f"%Oldchk=1_stage/1_stage_conformero_{ranks.loc[rank_usado, 'INDEX']}.chk\n")
-    com.write(f"%Chk=2_stage_rank_{rank_usado}.chk\n")
-    com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-    com.write(f" {nome}\n\n")
-    com.write("0 1\n")
-  ranks.loc[rank_usado, "STATUS_FREQ"] = 'calculate'
-  os.system(f"g09 < 2_stage_rank_{rank_usado}.com > 2_stage_rank_{rank_usado}.log")
-  ranks.to_csv("1_stage_rank.log", sep=' ')
+    print("\033[1;34mCalculando Frequencia\n\033[0;30m", flush=True)
+    rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK')
+    if len(rank_usado) == 0:
+      os.environ["STATUS_FREQ"] = "NO_FREQ"
+      print("\033[1;34mTodos possuem frequencia negativa\033[1;30m", flush=True)
+    else:
+      rank_usado = rank_usado.index[0]
+      nome = ranks.loc[rank_usado, 'NAME']
+      with open(f"2_stage_rank_{rank_usado}.com", "w") as com:
+        com.write(f"%NProcShared={os.environ['threads']}\n")
+        com.write(f"%Oldchk=1_stage/1_stage_conformero_{ranks.loc[rank_usado, 'INDEX']}.chk\n")
+        com.write(f"%Chk=2_stage_rank_{rank_usado}.chk\n")
+        com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+        com.write(f" {nome}\n\n")
+        com.write("0 1\n")
+      ranks.loc[rank_usado, "STATUS_FREQ"] = 'calculate'
+      os.system(f"g09 < 2_stage_rank_{rank_usado}.com > 2_stage_rank_{rank_usado}.log")
+      ranks.to_csv("1_stage_rank.log", sep=' ')
 
 def calcula_fukui():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ')
-  ligante = ranks.query("STATUS_FREQ == 'Pass")
+  ligante = ranks.query("STATUS_FREQ == 'Pass'").set_index("RANK").sort_values(by="RANK")
   if len(ligante) == 1:
     print("\033[1;34mCalculando FUKUI\n\033[0;30m", flush=True)
-    with open(f"3_stage_rank_{ligante['RANK']}.com", "w") as com:
+    with open(f"3_stage_rank_{ligante.index[0]}.com", "w") as com:
       com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante['RANK']}.chk\n")
+      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
       com.write("%Chk=fk+.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante['NAME']}\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk+\n\n")
       com.write("1 2\n\n")
       com.write("--Link1--\n")
       com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write("%Oldchk=opt2.chk\n")
+      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
       com.write("%Chk=fk-.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante['NAME']}\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk-\n\n")
       com.write("-1 2\n\n")
       com.write("--Link1--\n")
       com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write("%Oldchk=opt2.chk\n")
+      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
       com.write("%Chk=fk0.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante['NAME']}\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
       com.write("0 2\n\n")
+    os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
   elif len(ligante) > 1:
     print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
 
@@ -219,7 +234,16 @@ def sub_rotina(smiles):
 def run_job():
   for confor_index in range(int(os.environ["conf_num"])):
     print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;30m", flush=True)
-    #os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
+    if os.path.exists("1_stage"):
+      if "Normal termination" in os.popen(f"tail -n 1 1_stage/1_stage_conformero_{confor_index}.log").read():
+        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;30m", flush=True)
+      else:
+        os.system(f"g09 < 1_stage/1_stage_conformero_{confor_index}.com > 1_stage/1_stage_conformero_{confor_index}.log")  
+    else:
+      if "Normal termination" in os.popen(f"tail -n 1 1_stage_conformero_{confor_index}.log").read():
+        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;30m", flush=True)
+      else:
+        os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
   print("\033[1;34mCalculando RANK\033[0;30m", flush=True)
   rankeamento()
   if not os.path.exists("1_stage"):
@@ -234,7 +258,7 @@ def run_job():
     print("\033[1;34mAchei a frequencia\033[0;30m", flush=True)
     print("\033[1;34mCalculando Fukui\033[0;30m", flush=True)
     calcula_fukui()
-  exit(0)
+  creditos()
 
 def main():
   global args
@@ -294,7 +318,6 @@ if __name__ == "__main__":
     args = {k: v for k, v in vars(parser.parse_args()).items()}
     if not args["extract_freq"] is None:
       verifica_freq(args["extract_freq"])
-      exit(0)
     if args["storage_path"] is None:
       args["storage_path"] = "jobs"
     elif args["storage_path"][0] == "/":
@@ -321,7 +344,7 @@ if __name__ == "__main__":
       help_full()
     if args["run_job"] == True:
       run_job()
-    if args["sub_job"] == True:
+    if args["sub_jobs"] == True:
       submete_jobs()
     if not args["smiles_file"] is None:
       main()
