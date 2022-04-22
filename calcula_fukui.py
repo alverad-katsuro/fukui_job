@@ -83,7 +83,7 @@ def verifica_freq(nome_do_arquivo):
     if len(frequencias) == 0:
       ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
       status = ranks.query("STATUS_FREQ == 'calculate'")
-      if (len(status)) == 0:
+      if (status.empty):
         print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;30m", flush=True)
         return "ERROR"
       else:
@@ -160,8 +160,7 @@ def calcula_freq():
 def calcula_fukui():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ')
   ligante = ranks.query("STATUS_FREQ == 'Pass'").set_index("RANK").sort_values(by="RANK")
-  if len(ligante) == 1 and ligante["STATUS_FUKUI"] != "DONE!":
-    print("\033[1;34mCalculando FUKUI\n\033[0;30m", flush=True)
+  if (not ligante.empty) and (ligante.loc[ligante.index[0],"STATUS_FUKUI"] != "DONE!"):
     with open(f"3_stage_rank_{ligante.index[0]}.com", "w") as com:
       com.write(f"%NProcShared={os.environ['threads']}\n")
       com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
@@ -183,18 +182,15 @@ def calcula_fukui():
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
       com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
       com.write("0 1\n\n")
-    os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
-    if ("Normal termination" in os.popen("tail -n 1 3_stage_rank_{ligante.index[0]}.log").read()):
-      ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
-      ranks.to_csv("1_stage_rank.log", sep=' ')
-      return True
-    else:
+    saida = os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
+    if (saida):
       ranks.loc[ligante.index[0],"FUKUI"] = "ERROR!"
       ranks.to_csv("1_stage_rank.log", sep=' ')
-      return False
-  elif len(ligante) > 1:
-    print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
-    return False
+      return saida
+    else:
+      ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
+      ranks.to_csv("1_stage_rank.log", sep=' ')
+      return saida
   else:
     print("\033[1;33mFUKUI JA CALCULADO\033[0;30m", flush=True)
     return False
@@ -251,6 +247,22 @@ def sub_rotina(smiles):
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
     os.system(f"cp {__file__} {args['storage_path']}/{job_name}/")
 
+def sub_opt_to_m062(confor_index):
+  global args
+  com_in = os.popen(f"obabel pdb/0_stage_conformero_{confor_index}.pdb -o com").readlines()[4:]
+  with open(f"1_stage_conformero_{confor_index}.com", "w") as com:
+      com.write(f"%NProcShared={os.environ['threads']}\n")
+      com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
+      com.write("#n m062x/6-311G(d,p) Opt\n")
+      com.write(f"\n {os.environ['SLURM_JOB_NAME']}\n")
+      com.write("".join(com_in))
+      com.write("--Link1--\n")
+      com.write(f"%NProcShared={os.environ['threads']}\n")
+      com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
+      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
+      com.write(f"\n {os.environ['SLURM_JOB_NAME']}_solv\n")
+      com.write("\n0  1\n")
+
 def run_job():
   for confor_index in range(int(os.environ["conf_num"])):
     print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;30m", flush=True)
@@ -263,7 +275,11 @@ def run_job():
       if "Normal termination" in os.popen(f"tail -n 1 1_stage_conformero_{confor_index}.log").read():
         print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;30m", flush=True)
       else:
-        os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
+        if (os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")) != 0:
+          if ("Error termination request processed by link 9999" in os.popen(f"tail -n 20 1_stage_conformero_{confor_index}.log").read()):
+            print("\033[1;33mErro de base, substituindo por m062 e tentando novamente\033[0;30m", flush=True)
+            sub_opt_to_m062(confor_index)
+            os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
   print("\033[1;34mCalculando RANK\033[0;30m", flush=True)
   rankeamento()
   if not os.path.exists("1_stage"):
@@ -277,9 +293,9 @@ def run_job():
   if os.environ["STATUS_FREQ"] == "TRUE":
     print("\033[1;34mAchei a frequencia\033[0;30m", flush=True)
     print("\033[1;34mCalculando Fukui\033[0;30m", flush=True)
-    terminou = calcula_fukui()
-    if terminou:
-      os.system(f"mv {os.environ['PDW']} done_{os.environ['PDW']}")
+    terminou = calcula_fukui() #get error cod
+    if (not terminou):
+      os.system(f"mv ../{os.environ['PWD'].split('/')[-1]} ../done_{os.environ['PWD'].split('/')[-1]}")
   creditos()
 
 def main():
