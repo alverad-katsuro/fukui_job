@@ -194,8 +194,10 @@ def calcula_fukui():
       return False
   elif len(ligante) > 1:
     print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
+    return False
   else:
     print("\033[1;33mFUKUI JA CALCULADO\033[0;30m", flush=True)
+    return False
 
 def cria_lanza(job_name):
   global args
@@ -271,7 +273,9 @@ def run_job():
   if os.environ["STATUS_FREQ"] == "TRUE":
     print("\033[1;34mAchei a frequencia\033[0;30m", flush=True)
     print("\033[1;34mCalculando Fukui\033[0;30m", flush=True)
-    calcula_fukui()
+    terminou = calcula_fukui()
+    if terminou:
+      os.system(f"mv {os.environ['PDW']} {os.environ['PDW']}_done")
   creditos()
 
 def main():
