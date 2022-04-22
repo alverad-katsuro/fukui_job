@@ -34,7 +34,7 @@ def generate_conf(smiles, job_name):
       com.write("--Link1--\n")
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
+      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
       com.write(f"\n {job_name}_solv\n")
       com.write("\n0  1\n")
     confor_index += 1
@@ -309,10 +309,9 @@ def main():
   global args
   try:
     smiles = open(args["smiles_file"], "r").read().split("\n")
+    print(smiles)
     if "" == smiles[-1]:
-      smiles = smiles.split("\n")[:-1]
-    else:
-      smiles = smiles
+      smiles = smiles[:-1]
   except:
     print("\033[1;33mVerifique se o arquivo existe!!!\033[0;30m", flush=True)
     exit(1)
