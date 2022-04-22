@@ -129,7 +129,7 @@ def calcula_freq():
     rank_usado = rank_usado.index[0]
   nome = ranks.loc[rank_usado, 'NAME']
   with open(f"2_stage_rank_{rank_usado}.com", "w") as com:
-    com.write(f"%NProcShared={os.environ['SLURM_NTASKS']}\n")
+    com.write(f"%NProcShared={os.environ['threads']}\n")
     com.write(f"%Oldchk=1_stage/1_stage_conformero_{ranks.loc[rank_usado, 'INDEX']}.chk\n")
     com.write(f"%Chk=2_stage_rank_{rank_usado}.chk\n")
     com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
@@ -145,21 +145,21 @@ def calcula_fukui():
   if len(ligante) == 1:
     print("\033[1;34mCalculando FUKUI\n\033[0;30m", flush=True)
     with open(f"3_stage_rank_{ligante['RANK']}.com", "w") as com:
-      com.write(f"%NProcShared={os.environ['SLURM_NTASKS']}\n")
+      com.write(f"%NProcShared={os.environ['threads']}\n")
       com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante['RANK']}.chk\n")
       com.write("%Chk=fk+.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
       com.write(f" {ligante['NAME']}\n\n")
       com.write("1 2\n\n")
       com.write("--Link1--\n")
-      com.write(f"%NProcShared={os.environ['SLURM_NTASKS']}\n")
+      com.write(f"%NProcShared={os.environ['threads']}\n")
       com.write("%Oldchk=opt2.chk\n")
       com.write("%Chk=fk-.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
       com.write(f" {ligante['NAME']}\n\n")
       com.write("-1 2\n\n")
       com.write("--Link1--\n")
-      com.write(f"%NProcShared={os.environ['SLURM_NTASKS']}\n")
+      com.write(f"%NProcShared={os.environ['threads']}\n")
       com.write("%Oldchk=opt2.chk\n")
       com.write("%Chk=fk0.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
@@ -219,7 +219,7 @@ def sub_rotina(smiles):
 def run_job():
   for confor_index in range(int(os.environ["conf_num"])):
     print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;30m", flush=True)
-    os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
+    #os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
   print("\033[1;34mCalculando RANK\033[0;30m", flush=True)
   rankeamento()
   if not os.path.exists("1_stage"):
