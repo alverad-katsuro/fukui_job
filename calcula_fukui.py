@@ -76,42 +76,49 @@ def rankeamento():
         rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[nome_arquivo]))    
         rank_index += 1
 
+def modulo_verifica_freq(nome_do_arquivo):
+  global args
+  frequencias = os.popen(f"grep 'Frequencies' {nome_do_arquivo}").read().split("\n")[:-1]
+  if len(frequencias) == 0:
+    ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
+    status = ranks.query("STATUS_FREQ == 'calculate'")
+    if (status.empty):
+      print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;30m", flush=True)
+      return "ERROR"
+    else:
+      ranks.loc[status.index[0], "STATUS_FREQ"] = "ERROR"
+      ranks.to_csv("1_stage_rank.log", sep=' ')
+      return "ERROR"
+  else:
+    matriz_verdade = []
+    print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;30m", flush=True)
+    with open(f"frequencia.log", "a") as log:
+      log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_do_arquivo))
+      log.write
+      for linha in frequencias:
+        colunas = linha.split()
+        for coluna in colunas:
+          if coluna != "--":
+            try:
+              log.write(f"{float(coluna):5.4f} ")
+              matriz_verdade.append(float(coluna))
+            except ValueError:
+              log.write(f"{coluna} ")
+        log.write("\n")
+      matriz_verdade.sort()
+      log.write("\n{aste}\n".format(aste=49*"#"))
+      log.write("{aste} Frequencia Inicial é {menor_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", menor_freq = matriz_verdade[0]))
+      log.write("{aste} Frequencia Final é {maior_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", maior_freq = matriz_verdade[-1]))
+      log.write("{aste}\n".format(aste=49*"#"))
+      return matriz_verdade[0]
+
 def verifica_freq(nome_do_arquivo):
   global args
+  #if os.path.exists("2_stage"):
   if os.path.isfile(nome_do_arquivo) == True:
-    frequencias = os.popen(f"grep 'Frequencies' {nome_do_arquivo}").read().split("\n")[:-1]
-    if len(frequencias) == 0:
-      ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
-      status = ranks.query("STATUS_FREQ == 'calculate'")
-      if (status.empty):
-        print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;30m", flush=True)
-        return "ERROR"
-      else:
-        ranks.loc[status.index[0], "STATUS_FREQ"] = "ERROR"
-        ranks.to_csv("1_stage_rank.log", sep=' ')
-        return "ERROR"
-    else:
-      matriz_verdade = []
-      print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;30m", flush=True)
-      with open(f"frequencia.log", "a") as log:
-        log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_do_arquivo))
-        log.write
-        for linha in frequencias:
-          colunas = linha.split()
-          for coluna in colunas:
-            if coluna != "--":
-              try:
-                log.write(f"{float(coluna):5.4f} ")
-                matriz_verdade.append(float(coluna))
-              except ValueError:
-                log.write(f"{coluna} ")
-          log.write("\n")
-        matriz_verdade.sort()
-        log.write("\n{aste}\n".format(aste=49*"#"))
-        log.write("{aste} Frequencia Inicial é {menor_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", menor_freq = matriz_verdade[0]))
-        log.write("{aste} Frequencia Final é {maior_freq} {aste_2}\n".format(aste=10*"#", aste_2=10*"#", maior_freq = matriz_verdade[-1]))
-        log.write("{aste}\n".format(aste=49*"#"))
-        return matriz_verdade[0]
+    return modulo_verifica_freq(nome_do_arquivo)
+  elif os.path.isfile(f"2_stage/{nome_do_arquivo}") == True:
+    return modulo_verifica_freq(f"2_stage/{nome_do_arquivo}")
   else:
     print("\033[1;33mArquivo de log não encontrado!.\n\033[0;30m", flush=True)
     exit(1)
@@ -120,10 +127,10 @@ def verifica_freq(nome_do_arquivo):
 def calcula_freq():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
   status_calculate = ranks.query("STATUS_FREQ == 'calculate'").index
-  if len(ranks.query("STATUS_FREQ == 'Pass'")) > 0:
+  if (not ranks.query("STATUS_FREQ == 'Pass'").empty):
     print("\033[1;33mPulando calculo de Frequencia, já existe um que atende os requisitos\n\033[0;30m", flush=True)
     os.environ["STATUS_FREQ"] = "TRUE"
-  elif len(status_calculate) > 0:
+  elif (not status_calculate.empty):
     print("\033[1;34mAtualizando 'log' Frequencia -> frequencia.log\n\033[0;30m", flush=True)
     rank_usado = status_calculate[0]
     return_freq = verifica_freq(f"2_stage_rank_{rank_usado}.log")
