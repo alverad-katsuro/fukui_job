@@ -160,7 +160,7 @@ def calcula_freq():
 def calcula_fukui():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ')
   ligante = ranks.query("STATUS_FREQ == 'Pass'").set_index("RANK").sort_values(by="RANK")
-  if len(ligante) == 1:
+  if len(ligante) == 1 and ligante["STATUS_FUKUI"] != "DONE!":
     print("\033[1;34mCalculando FUKUI\n\033[0;30m", flush=True)
     with open(f"3_stage_rank_{ligante.index[0]}.com", "w") as com:
       com.write(f"%NProcShared={os.environ['threads']}\n")
@@ -194,6 +194,8 @@ def calcula_fukui():
       return False
   elif len(ligante) > 1:
     print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
+  else:
+    print("\033[1;33mFUKUI JA CALCULADO\033[0;30m", flush=True)
 
 def cria_lanza(job_name):
   global args
