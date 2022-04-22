@@ -15,6 +15,8 @@ def generate_conf(smiles, job_name):
   os.system(f"obabel -:'{smiles}' -o pdb -O {args['storage_path']}/{job_name}/pdb/inicio.pdb --gen3d --ff GAFF -h -minimize")
   print("\033[1;34mGerando Conformeros\n\033[0;30m", flush=True)
   os.system(f"obabel {args['storage_path']}/{job_name}/pdb/inicio1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros.pdb --conformer --nconf 10 --writeconformers")
+  conf_gen = len(os.popen(f"grep END {args['storage_path']}/{job_name}/pdb/conformeros.pdb").readlines())
+  args["conf_num"] = conf_gen
   conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
   confor_index = 0
   print("\033[1;34mEscrevendo os Conformeros\n\033[0;30m", flush=True)
@@ -263,11 +265,11 @@ def run_job():
 def main():
   global args
   try:
-    smiles = open(args["smiles_file"], "r").read()
-    if "\\n" in smiles:
+    smiles = open(args["smiles_file"], "r").read().split("\n")
+    if "" == smiles[-1]:
       smiles = smiles.split("\n")[:-1]
     else:
-      smiles = [smiles]
+      smiles = smiles
   except:
     print("\033[1;33mVerifique se o arquivo existe!!!\033[0;30m", flush=True)
     exit(1)
