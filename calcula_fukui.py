@@ -184,7 +184,14 @@ def calcula_fukui():
       com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
       com.write("0 1\n\n")
     os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
-    ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
+    if ("Normal termination" in os.popen("tail -n 1 3_stage_rank_{ligante.index[0]}.log").read()):
+      ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
+      ranks.to_csv("1_stage_rank.log", sep=' ')
+      return True
+    else:
+      ranks.loc[ligante.index[0],"FUKUI"] = "ERROR!"
+      ranks.to_csv("1_stage_rank.log", sep=' ')
+      return False
   elif len(ligante) > 1:
     print("\033[1;33mError --- Mais de um ligante\033[0;30m", flush=True)
 
