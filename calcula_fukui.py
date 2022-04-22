@@ -239,10 +239,14 @@ def submete_jobs():
 def sub_rotina(smiles):
   global args
   while (len(smiles) > 0):
-    job_name = str(uuid4())[:8]
+    atual = smiles.pop().split(" ")
+    if (len(atual) > 1):
+      job_name = f"{atual.pop()}_{str(uuid4())[:2]}"
+    else:
+      job_name = f"{str(uuid4())[:8]}"
     if not os.path.exists("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name)):
       os.makedirs("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name))
-    generate_conf(smiles.pop(), job_name)
+    generate_conf(atual.pop(), job_name)
     cria_lanza(job_name)
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
     os.system(f"cp {__file__} {args['storage_path']}/{job_name}/")
