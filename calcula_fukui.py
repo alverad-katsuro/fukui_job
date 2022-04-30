@@ -157,7 +157,7 @@ def calcula_freq():
         com.write(f"%NProcShared={os.environ['threads']}\n")
         com.write(f"%Oldchk=1_stage/1_stage_conformero_{ranks.loc[rank_usado, 'INDEX']}.chk\n")
         com.write(f"%Chk=2_stage_rank_{rank_usado}.chk\n")
-        com.write("# m062x/6-311G(d,p) freq=noraman Opt Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+        com.write("# m062x/6-311G(d,p) freq=noraman Opt geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
         com.write(f" {nome}\n\n")
         com.write("0 1\n")
       ranks.loc[rank_usado, "STATUS_FREQ"] = 'calculate'
@@ -168,36 +168,38 @@ def calcula_fukui():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ')
   ligante = ranks.query("STATUS_FREQ == 'Pass'").set_index("RANK").sort_values(by="RANK")
   if (not ligante.empty) and (ligante.loc[ligante.index[0],"STATUS_FUKUI"] != "DONE!"):
-    with open(f"3_stage_rank_{ligante.index[0]}.com", "w") as com:
-      com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
-      com.write("%Chk=fk+.chk\n")
-      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk+\n\n")
-      com.write("1 2\n\n")
-      com.write("--Link1--\n")
-      com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
-      com.write("%Chk=fk-.chk\n")
-      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk-\n\n")
-      com.write("-1 2\n\n")
-      com.write("--Link1--\n")
+    with open(f"3_stage_rank_{ligante.index[0]}_fk0.com", "w") as com:
       com.write(f"%NProcShared={os.environ['threads']}\n")
       com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
       com.write("%Chk=fk0.chk\n")
       com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
-      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk+\n\n")
       com.write("0 1\n\n")
-    saida = os.system(f"g09 < 3_stage_rank_{ligante.index[0]}.com > 3_stage_rank_{ligante.index[0]}.log")
-    if (saida):
+    with open(f"3_stage_rank_{ligante.index[0]}_fk+.com", "w") as com:
+      com.write(f"%NProcShared={os.environ['threads']}\n")
+      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
+      com.write("%Chk=fk+.chk\n")
+      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk-\n\n")
+      com.write("1 2\n\n")
+    with open(f"3_stage_rank_{ligante.index[0]}_fk-.com", "w") as com:
+      com.write(f"%NProcShared={os.environ['threads']}\n")
+      com.write(f"%Oldchk=2_stage/2_stage_rank_{ligante.index[0]}.chk\n")
+      com.write("%Chk=fk-.chk\n")
+      com.write("# m062x/6-311G(d,p) SP Pop=NBO geom=check scf=maxcycle=1000 maxdisk=100Gb\n\n")
+      com.write(f" {ligante.loc[ligante.index[0],'NAME']}_fk0\n\n")
+      com.write("-1 2\n\n")
+    saida_fk0 = os.system(f"g09 < 3_stage_rank_{ligante.index[0]}_fk0.com > 3_stage_rank_{ligante.index[0]}_fk0.log")
+    saida_fkp = os.system(f"g09 < 3_stage_rank_{ligante.index[0]}_fk+.com > 3_stage_rank_{ligante.index[0]}_fk+.log")
+    saida_fkn = os.system(f"g09 < 3_stage_rank_{ligante.index[0]}_fk-.com > 3_stage_rank_{ligante.index[0]}_fk-.log")
+    if (saida_fk0 or saida_fkp or saida_fkn):
       ranks.loc[ligante.index[0],"FUKUI"] = "ERROR!"
       ranks.to_csv("1_stage_rank.log", sep=' ')
-      return saida
+      return 1
     else:
       ranks.loc[ligante.index[0],"FUKUI"] = "DONE!"
       ranks.to_csv("1_stage_rank.log", sep=' ')
-      return saida
+      return 0
   else:
     print("\033[1;33mFUKUI JA CALCULADO\033[0;30m", flush=True)
     return False
