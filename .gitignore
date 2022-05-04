@@ -8,3 +8,4 @@ jobs_index.txt
 run_all.py
 lanzaFukui.sh
 data/
+run_calcula_fukui.py
