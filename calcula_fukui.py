@@ -11,17 +11,17 @@ from uuid import uuid4
 ### Stagio 2 -> calcula fukui
 def generate_conf(smiles, job_name):
   global args
-  print("\033[1;34mGerando PDB\n\033[0;30m", flush=True)
+  print("\033[1;34mGerando PDB\n\033[0;38m", flush=True)
   os.environ["OMP_NUM_THREADS"] = "1"
   os.system(f"obabel -:'{smiles}' -o pdb -O {args['storage_path']}/{job_name}/pdb/inicio.pdb --gen3d --ff GAFF -h -minimize")
-  print("\033[1;34mGerando Conformeros\n\033[0;30m", flush=True)
+  print("\033[1;34mGerando Conformeros\n\033[0;38m", flush=True)
   os.system(f"obabel {args['storage_path']}/{job_name}/pdb/inicio1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros.pdb --conformer --nconf 10 --writeconformers")
   os.environ.pop("OMP_NUM_THREADS", None)
   conf_gen = len(os.popen(f"grep END {args['storage_path']}/{job_name}/pdb/conformeros.pdb").readlines())
   args["conf_num"] = conf_gen
   conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
   confor_index = 0
-  print("\033[1;34mEscrevendo os Conformeros\n\033[0;30m", flush=True)
+  print("\033[1;34mEscrevendo os Conformeros\n\033[0;38m", flush=True)
   while (len(conformeros) > 0):
     conformero = conformeros.pop()
     with open(f"{args['storage_path']}/{job_name}/pdb/0_stage_conformero_{confor_index}.pdb", "w") as pdb:
@@ -40,14 +40,14 @@ def generate_conf(smiles, job_name):
       com.write(f"\n {job_name}_solv\n")
       com.write("\n0  1\n")
     confor_index += 1
-  print("\033[1;32mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;30m", flush=True)
+  print("\033[1;32mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;38m", flush=True)
 
 def rankeamento():
   if os.path.isfile("1_stage_rank.log") == True:
-    print(f"\033[1;33mRANK já existente, pulando etapa\033[0;30m", flush=True)
+    print(f"\033[1;33mRANK já existente, pulando etapa\033[0;38m", flush=True)
     os.environ["STATUS_FREQ"] = "FALSE"
   else:
-    print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;30m", flush=True)
+    print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;38m", flush=True)
     log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
     if len(log_gaus) == 0:
       log_gaus = os.popen("ls 1_stage/1_stage_conformero_*.log").read().split()
@@ -62,7 +62,7 @@ def rankeamento():
       try:
         energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
       except IndexError:
-        print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou(product ou reagent)\033[0;30m", flush=True)
+        print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou(product ou reagent)\033[0;38m", flush=True)
         energias.pop(nome_arquivo)
     if len(energias.keys()) == 0:
       os.environ["STATUS_FREQ"] = "ERROR_RANK"
@@ -71,7 +71,7 @@ def rankeamento():
       os.environ["STATUS_FREQ"] = "FALSE"
     rank_index = 0
     ordem_melhores = sorted(energias, key=energias.get)
-    print("\033[1;34mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;30m", flush=True)
+    print("\033[1;34mEscrevendo o Rankeamento -> 1_stage_rank.log\n\033[0;38m", flush=True)
     with open("1_stage_rank.log", "w") as rank:
       rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ STATUS_FUKUI\n")
       for key in ordem_melhores:
@@ -85,7 +85,7 @@ def modulo_verifica_freq(nome_do_arquivo):
     ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
     status = ranks.query("STATUS_FREQ == 'calculate'")
     if (status.empty):
-      print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;30m", flush=True)
+      print("\033[1;33mNão há 'STATUS_FREQ = calculate' no arquivo de RANK. (Alguma etapa foi pulada)\n\033[0;38m", flush=True)
       return "ERROR"
     else:
       ranks.loc[status.index[0], "STATUS_FREQ"] = "ERROR"
@@ -93,7 +93,7 @@ def modulo_verifica_freq(nome_do_arquivo):
       return "ERROR"
   else:
     matriz_verdade = []
-    print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;30m", flush=True)
+    print("\033[1;34mEscrevendo Frequenica -> frequencia.log.\n\033[0;38m", flush=True)
     with open(f"frequencia.log", "a") as log:
       log.write("{aste} Frequencia do {nome_arquivo} {aste}\n\n".format(aste=13*"#", nome_arquivo = nome_do_arquivo))
       log.write
@@ -122,7 +122,7 @@ def verifica_freq(nome_do_arquivo):
   elif os.path.isfile(f"2_stage/{nome_do_arquivo}") == True:
     return modulo_verifica_freq(f"2_stage/{nome_do_arquivo}")
   else:
-    print("\033[1;33mArquivo de log não encontrado!.\n\033[0;30m", flush=True)
+    print("\033[1;33mArquivo de log não encontrado!.\n\033[0;38m", flush=True)
     exit(1)
 
 ## Preciso achar o melhor rank caso geral e criar 
@@ -130,10 +130,10 @@ def calcula_freq():
   ranks = pd.read_csv('1_stage_rank.log', sep=' ').set_index("RANK")
   status_calculate = ranks.query("STATUS_FREQ == 'calculate'").index
   if (not ranks.query("STATUS_FREQ == 'Pass'").empty):
-    print("\033[1;33mPulando calculo de Frequencia, já existe um que atende os requisitos\n\033[0;30m", flush=True)
+    print("\033[1;33mPulando calculo de Frequencia, já existe um que atende os requisitos\n\033[0;38m", flush=True)
     os.environ["STATUS_FREQ"] = "TRUE"
   elif (not status_calculate.empty):
-    print("\033[1;34mAtualizando 'log' Frequencia -> frequencia.log\n\033[0;30m", flush=True)
+    print("\033[1;34mAtualizando 'log' Frequencia -> frequencia.log\n\033[0;38m", flush=True)
     rank_usado = status_calculate[0]
     return_freq = verifica_freq(f"2_stage_rank_{rank_usado}.log")
     if return_freq == 'ERROR':
@@ -147,7 +147,7 @@ def calcula_freq():
       ranks.to_csv("1_stage_rank.log", sep=' ')
       print("\033[1;34mTodos possuem frequencia negativa\033[1;30m", flush=True)
   else:
-    print("\033[1;34mCalculando Frequencia\n\033[0;30m", flush=True)
+    print("\033[1;34mCalculando Frequencia\n\033[0;38m", flush=True)
     rank_usado = ranks.loc[ranks['STATUS_FREQ'].isnull()].sort_values(by='RANK')
     if len(rank_usado) == 0:
       os.environ["STATUS_FREQ"] = "NO_FREQ"
@@ -203,7 +203,7 @@ def calcula_fukui():
       ranks.to_csv("1_stage_rank.log", sep=' ')
       return 0
   else:
-    print("\033[1;33mFUKUI JA CALCULADO\033[0;30m", flush=True)
+    print("\033[1;33mFUKUI JA CALCULADO\033[0;38m", flush=True)
     return False
 
 def cria_lanza(job_name):
@@ -257,7 +257,7 @@ def sub_rotina(smiles):
     generate_conf(atual.pop(), job_name)
     cria_lanza(job_name)
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
-    os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__}")
+    os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__.split('/')[-1]}")
 
 def sub_opt_to_m062(confor_index):
   global args
@@ -277,22 +277,22 @@ def sub_opt_to_m062(confor_index):
 
 def run_job():
   for confor_index in range(int(os.environ["conf_num"])):
-    print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;30m", flush=True)
+    print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;38m", flush=True)
     if os.path.exists("1_stage"):
       if "Normal termination" in os.popen(f"tail -n 1 1_stage/1_stage_conformero_{confor_index}.log").read():
-        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;30m", flush=True)
+        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;38m", flush=True)
       else:
         os.system(f"g09 < 1_stage/1_stage_conformero_{confor_index}.com > 1_stage/1_stage_conformero_{confor_index}.log")  
     else:
       if "Normal termination" in os.popen(f"tail -n 1 1_stage_conformero_{confor_index}.log").read():
-        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;30m", flush=True)
+        print(f"\033[1;33m1_stage_conformero_{confor_index}.com já foi calculado\033[0;38m", flush=True)
       else:
         if (os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")) != 0:
           if ("Error termination request processed by link 9999" in os.popen(f"tail -n 20 1_stage_conformero_{confor_index}.log").read()):
-            print("\033[1;33mErro de base, substituindo por m062 e tentando novamente\033[0;30m", flush=True)
+            print("\033[1;33mErro de base, substituindo por m062 e tentando novamente\033[0;38m", flush=True)
             sub_opt_to_m062(confor_index)
             os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
-  print("\033[1;34mCalculando RANK\033[0;30m", flush=True)
+  print("\033[1;34mCalculando RANK\033[0;38m", flush=True)
   rankeamento()
   if not os.path.exists("1_stage"):
       os.makedirs("1_stage")
@@ -303,8 +303,8 @@ def run_job():
       os.makedirs("2_stage")
   os.system("mv 2_stage_rank_* 2_stage")
   if os.environ["STATUS_FREQ"] == "TRUE":
-    print("\033[1;34mAchei a frequencia\033[0;30m", flush=True)
-    print("\033[1;34mCalculando Fukui\033[0;30m", flush=True)
+    print("\033[1;34mAchei a frequencia\033[0;38m", flush=True)
+    print("\033[1;34mCalculando Fukui\033[0;38m", flush=True)
     terminou = calcula_fukui() #get error cod
     if (not terminou):
       os.system(f"mv ../{os.environ['PWD'].split('/')[-1]} ../done_{os.environ['PWD'].split('/')[-1]}")
@@ -317,7 +317,7 @@ def main():
     if "" == smiles[-1]:
       smiles = smiles[:-1]
   except:
-    print("\033[1;33mVerifique se o arquivo existe!!!\033[0;30m", flush=True)
+    print("\033[1;33mVerifique se o arquivo existe!!!\033[0;38m", flush=True)
     exit(1)
   if not os.path.exists("{storage_path}".format(storage_path = args["storage_path"])):
       os.makedirs("{storage_path}".format(storage_path = args["storage_path"]))
@@ -346,7 +346,7 @@ def creditos():
 def help_full():
   print("\033[1;32mA ser desenvolvido", flush=True)
   print("Funções marcadas com OBS são chamadas pelo slurm", flush=True)
-  print("Só as use se ja tiver completado as etapas anteriores\033[0;30m", flush=True)
+  print("Só as use se ja tiver completado as etapas anteriores\033[0;38m", flush=True)
   exit(0)
 
 if __name__ == "__main__":
