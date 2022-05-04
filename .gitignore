@@ -2,3 +2,7 @@
 *.log
 jobs/run_all.py
 jobs
+*.pdb
+*.com
+semelhantes_k777/jobs_index.txt
+semelhantes_k777/run_all.py

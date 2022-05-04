@@ -12,9 +12,11 @@ from uuid import uuid4
 def generate_conf(smiles, job_name):
   global args
   print("\033[1;34mGerando PDB\n\033[0;30m", flush=True)
+  os.environ["OMP_NUM_THREADS"] = "1"
   os.system(f"obabel -:'{smiles}' -o pdb -O {args['storage_path']}/{job_name}/pdb/inicio.pdb --gen3d --ff GAFF -h -minimize")
   print("\033[1;34mGerando Conformeros\n\033[0;30m", flush=True)
   os.system(f"obabel {args['storage_path']}/{job_name}/pdb/inicio1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros.pdb --conformer --nconf 10 --writeconformers")
+  os.environ.pop("OMP_NUM_THREADS", None)
   conf_gen = len(os.popen(f"grep END {args['storage_path']}/{job_name}/pdb/conformeros.pdb").readlines())
   args["conf_num"] = conf_gen
   conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
@@ -322,8 +324,9 @@ def main():
   smiles = np.array_split(smiles, cpu_count())
   processos = []
   for _ in range(cpu_count()):
-    if len(smiles) > 0:
-      p = Process(target=sub_rotina, args=([smiles.pop().tolist()]))
+    smiles_pop = smiles.pop()
+    if len(smiles_pop) > 0:
+      p = Process(target=sub_rotina, args=([smiles_pop.tolist()]))
       p.start()
       processos.append(p)
   for p in processos:
