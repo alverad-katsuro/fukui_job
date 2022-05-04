@@ -219,7 +219,8 @@ def cria_lanza(job_name):
     the_file.write("module load gaussian/09\n\n")
     for env in args.keys():
       the_file.write(f"export {env}={args[env]}\n")
-    the_file.write("./calcula_fukui.py --run-job 1\n\n")
+    the_file.write("chmod +x run_calcula_fukui.py\n")
+    the_file.write("./run_calcula_fukui.py --run-job 1\n\n")
     the_file.write("date;")
     the_file.write("echo \"End job\"\n\n")
 
@@ -256,7 +257,7 @@ def sub_rotina(smiles):
     generate_conf(atual.pop(), job_name)
     cria_lanza(job_name)
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
-    os.system(f"cp {__file__} {args['storage_path']}/{job_name}/")
+    os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__}")
 
 def sub_opt_to_m062(confor_index):
   global args
@@ -313,7 +314,6 @@ def main():
   global args
   try:
     smiles = open(args["smiles_file"], "r").read().split("\n")
-    print(smiles)
     if "" == smiles[-1]:
       smiles = smiles[:-1]
   except:
