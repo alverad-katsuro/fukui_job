@@ -55,7 +55,7 @@ def rankeamento():
     while (len(log_gaus) > 0):
       nome_arquivo = log_gaus.pop()
       energias[nome_arquivo] = []
-      grep = os.popen(f"grep -A 1 'HF' {nome_arquivo}").read().split('\\')
+      grep = os.popen(f"grep -A 1 'HF=' {nome_arquivo}").read().split('\\')
       for elemento in grep:
         if "HF=" in elemento:
           energias[nome_arquivo].append(elemento.replace("\n ", ""))
