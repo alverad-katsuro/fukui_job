@@ -36,7 +36,7 @@ def generate_conf(smiles, job_name):
       com.write("--Link1--\n")
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
+      com.write("#n Opt m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
       com.write(f"\n {job_name}_solv\n")
       com.write("\n0  1\n")
     confor_index += 1
@@ -58,7 +58,7 @@ def rankeamento():
       grep = os.popen(f"grep -A 1 'HF=' {nome_arquivo}").read().split('\\')
       for elemento in grep:
         if "HF=" in elemento:
-          energias[nome_arquivo].append(elemento.replace("\n ", ""))
+          energias[nome_arquivo].append(elemento.replace("\n ", "").replace(" ", ""))
       try:
         energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
       except IndexError:
