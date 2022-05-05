@@ -57,7 +57,7 @@ def rankeamento():
       energias[nome_arquivo] = []
       grep = os.popen(f"grep -A 1 'HF' {nome_arquivo}").read().split('\\')
       for elemento in grep:
-        if "HF" in elemento:
+        if "HF=" in elemento:
           energias[nome_arquivo].append(elemento.replace("\n ", ""))
       try:
         energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
