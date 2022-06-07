@@ -37,7 +37,7 @@ def generate_conf(product, reagent, job_name):
     with open(f"{args['storage_path']}/{job_name}/1_stage_conformero_{confor_index}.com", "w") as com:
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n Opt m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
+      com.write("#n Opt m062x/6-311G(d,p) scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
       com.write(f"\n {job_name}\n")
       com.write("".join(com_in))
       #com.write("--Link1--\n")
