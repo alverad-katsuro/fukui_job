@@ -1,11 +1,7 @@
-CSC=C alkyne_ps1
-CS.C#C alkyne_rs
-CSCC ethene0
-CS.C=C ethene_rs
-CS.C=O formaldeido_rs
-CSCN imine0
-CS.C=N imine_rs
-CSC=N nitrila_ps
-CS.C#N nitrila_rs
-CSCS thioform1
-CS.C=S thio_rs_2
+NAME PRODUCT REAGENT
+alkyne CSC=C CS.C#C
+ethene CSCC CS.C=C
+formaldeido CSCO CS.C=O
+imine CSCN CS.C=N
+nitrila CSC=N CS.C#N
+thioform CSCS CS.C=S

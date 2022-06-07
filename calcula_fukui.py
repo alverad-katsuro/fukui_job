@@ -9,19 +9,26 @@ from uuid import uuid4
 ### Stagio 0 -> gera os pdb's
 ### Stagio 1 -> gera os com's com PRODUTO - REAGENTE
 ### Stagio 2 -> calcula fukui
-def generate_conf(smiles, job_name):
+def generate_conf(product, reagent, job_name):
   global args
   print("\033[1;34mGerando PDB\n\033[0;38m", flush=True)
   os.environ["OMP_NUM_THREADS"] = "1"
-  os.system(f"obabel -:'{smiles}' -o pdb -O {args['storage_path']}/{job_name}/pdb/inicio.pdb --gen3d --ff GAFF -h -minimize")
-  print("\033[1;34mGerando Conformeros\n\033[0;38m", flush=True)
-  os.system(f"obabel {args['storage_path']}/{job_name}/pdb/inicio1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros.pdb --conformer --nconf 10 --writeconformers")
+  os.system(f"obabel -:'{reagent}' -o pdb -O {args['storage_path']}/{job_name}/pdb/reagent.pdb --gen3d --ff GAFF -h -minimize")
+  os.system(f"obabel -:'{product}' -o pdb -O {args['storage_path']}/{job_name}/pdb/product.pdb --gen3d --ff GAFF -h -minimize")
+  print("\033[1;34mGerando Conformeros do produto\n\033[0;38m", flush=True)
+  os.system(f"obabel {args['storage_path']}/{job_name}/pdb/product1.pdb -O {args['storage_path']}/{job_name}/pdb/conformeros_prod.pdb --conformer --nconf {args['conf_num']} --writeconformers")
   os.environ.pop("OMP_NUM_THREADS", None)
-  conf_gen = len(os.popen(f"grep END {args['storage_path']}/{job_name}/pdb/conformeros.pdb").readlines())
+  conf_gen = len(os.popen(f"grep END {args['storage_path']}/{job_name}/pdb/conformeros_prod.pdb").readlines())
   args["conf_num"] = conf_gen
-  conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros.pdb", "r").read().split("\n")[:-1], args["conf_num"])
+  conformeros = np.array_split(open(f"{args['storage_path']}/{job_name}/pdb/conformeros_prod.pdb", "r").read().split("\n")[:-1], args["conf_num"])
   confor_index = 0
   print("\033[1;34mEscrevendo os Conformeros\n\033[0;38m", flush=True)
+  com_in_reagent = os.popen(f"obabel {args['storage_path']}/{job_name}/pdb/reagent1.pdb -o com").readlines()[4:]
+  with open(f"{args['storage_path']}/{job_name}/1_stage_reagent.com", "w") as com:
+    com.write(f"%NProcShared={args['threads']}\n")
+    com.write("#n m062x/6-311G(d,p) Opt\n")
+    com.write(f"\n {job_name}\n")
+    com.write("".join(com_in_reagent))
   while (len(conformeros) > 0):
     conformero = conformeros.pop()
     with open(f"{args['storage_path']}/{job_name}/pdb/0_stage_conformero_{confor_index}.pdb", "w") as pdb:
@@ -30,18 +37,21 @@ def generate_conf(smiles, job_name):
     with open(f"{args['storage_path']}/{job_name}/1_stage_conformero_{confor_index}.com", "w") as com:
       com.write(f"%NProcShared={args['threads']}\n")
       com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n AM1 Opt\n")
+      com.write("#n Opt m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
       com.write(f"\n {job_name}\n")
       com.write("".join(com_in))
-      com.write("--Link1--\n")
-      com.write(f"%NProcShared={args['threads']}\n")
-      com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n Opt m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
-      com.write(f"\n {job_name}_solv\n")
-      com.write("\n0  1\n")
+      #com.write("--Link1--\n")
+      #com.write(f"%NProcShared={args['threads']}\n")
+      #com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
+      #com.write("#n Opt m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000\n")
+      #com.write(f"\n {job_name}_solv\n")
+      #com.write("\n0  1\n")
     confor_index += 1
   print("\033[1;32mVá na pasta jobs e execute o 'run_all.py' para submeter todos jobs no slurm\n\033[0;38m", flush=True)
 
+
+
+### verificar as subpastas erro de logica
 def rankeamento():
   if os.path.isfile("1_stage_rank.log") == True:
     print(f"\033[1;33mRANK já existente, pulando etapa\033[0;38m", flush=True)
@@ -49,9 +59,20 @@ def rankeamento():
   else:
     print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;38m", flush=True)
     log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
+    log_gaus_reg = os.popen("ls 1_stage_reagent.log").read().split()
+    if len(log_gaus_reg) == 0:
+      log_gaus_reg = os.popen("ls 1_stage/1_stage_reagent.log").read().split()
     if len(log_gaus) == 0:
       log_gaus = os.popen("ls 1_stage/1_stage_conformero_*.log").read().split()
     energias = {}
+    for elemento in os.popen(f"grep -A 1 'HF=' 1_stage_reagent.log").read().split('\\'):
+        if "HF=" in elemento:
+          energias["reagent"].append(elemento.replace("\n ", "").replace(" ", ""))
+    try:
+      energias["reagent"] = float(energias["reagent"][1][3:])
+    except IndexError:
+      print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, reagent sem HF= \033[0;38m", flush=True)
+      exit(1)
     while (len(log_gaus) > 0):
       nome_arquivo = log_gaus.pop()
       energias[nome_arquivo] = []
@@ -60,9 +81,9 @@ def rankeamento():
         if "HF=" in elemento:
           energias[nome_arquivo].append(elemento.replace("\n ", "").replace(" ", ""))
       try:
-        energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - float(energias[nome_arquivo][0][3:])) / 627.5
+        energias[nome_arquivo] = (float(energias[nome_arquivo][1][3:]) - energias["reagent"]) / 627.5
       except IndexError:
-        print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou(product ou reagent)\033[0;38m", flush=True)
+        print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou (product HF=)\033[0;38m", flush=True)
         energias.pop(nome_arquivo)
     if len(energias.keys()) == 0:
       os.environ["STATUS_FREQ"] = "ERROR_RANK"
@@ -244,17 +265,17 @@ def submete_jobs():
   os.chdir(f"{os.environ['PWD']}/{args['storage_path']}")
   os.system("./run_all.py")
 
-def sub_rotina(smiles):
+# dataframe -> NAME PRODUCT REAGENT
+def sub_rotina(dataframe):
   global args
-  while (len(smiles) > 0):
-    atual = smiles.pop().split(" ")
-    if (len(atual) > 1):
-      job_name = f"{atual.pop()}_{str(uuid4())[:2]}"
+  for index, row in dataframe.iterrows():
+    if (dataframe.NAME != None):
+      job_name = f"{dataframe.NAME}_{str(uuid4())[:2]}"
     else:
       job_name = f"{str(uuid4())[:8]}"
     if not os.path.exists("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name)):
       os.makedirs("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name))
-    generate_conf(atual.pop(), job_name)
+    generate_conf(dataframe.PRODUCT, dataframe.REAGENT, job_name)
     cria_lanza(job_name)
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
     os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__.split('/')[-1]}")
@@ -313,20 +334,19 @@ def run_job():
 def main():
   global args
   try:
-    smiles = open(args["smiles_file"], "r").read().split("\n")
-    if "" == smiles[-1]:
-      smiles = smiles[:-1]
+    dataframe = pd.read_csv(args["smiles_file"], sep=" ")
   except:
     print("\033[1;33mVerifique se o arquivo existe!!!\033[0;38m", flush=True)
     exit(1)
   if not os.path.exists("{storage_path}".format(storage_path = args["storage_path"])):
       os.makedirs("{storage_path}".format(storage_path = args["storage_path"]))
-  smiles = np.array_split(smiles, cpu_count())
+  dataframe = np.array_split(dataframe, cpu_count())
   processos = []
   for _ in range(cpu_count()):
-    smiles_pop = smiles.pop()
-    if len(smiles_pop) > 0:
-      p = Process(target=sub_rotina, args=([smiles_pop.tolist()]))
+    dataframe_pop = dataframe.pop()
+    print("AAAAAAAAAAAaaaaaaaaavbb")
+    if len(dataframe_pop) > 0:
+      p = Process(target=sub_rotina, args=([dataframe_pop]))
       p.start()
       processos.append(p)
   for p in processos:
