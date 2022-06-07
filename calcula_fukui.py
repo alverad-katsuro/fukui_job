@@ -269,13 +269,13 @@ def submete_jobs():
 def sub_rotina(dataframe):
   global args
   for index, row in dataframe.iterrows():
-    if (dataframe.NAME != None):
-      job_name = f"{dataframe.NAME}_{str(uuid4())[:2]}"
+    if (not dataframe.NAME.empty):
+      job_name = f"{row.NAME}_{str(uuid4())[:2]}"
     else:
       job_name = f"{str(uuid4())[:8]}"
     if not os.path.exists("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name)):
       os.makedirs("{storage_path}/{job_name}/pdb".format(storage_path = args["storage_path"], job_name = job_name))
-    generate_conf(dataframe.PRODUCT, dataframe.REAGENT, job_name)
+    generate_conf(row.PRODUCT, row.REAGENT, job_name)
     cria_lanza(job_name)
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
     os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__.split('/')[-1]}")
@@ -344,7 +344,6 @@ def main():
   processos = []
   for _ in range(cpu_count()):
     dataframe_pop = dataframe.pop()
-    print("AAAAAAAAAAAaaaaaaaaavbb")
     if len(dataframe_pop) > 0:
       p = Process(target=sub_rotina, args=([dataframe_pop]))
       p.start()
