@@ -297,6 +297,20 @@ def sub_opt_to_m062(confor_index):
       com.write("\n0  1\n")
 
 def run_job():
+  print(f"\033[1;34mStart 1_stage_reagent.com\033[0;38m", flush=True)
+  if os.path.exists("1_stage"):
+    if "Normal termination" in os.popen(f"tail -n 1 1_stage/1_stage_reagent.log").read():
+      print(f"\033[1;33m1_stage_reagent.com já foi calculado\033[0;38m", flush=True)
+    else:
+      os.system(f"g09 < 1_stage/1_stage_reagent.com > 1_stage/1_stage_reagent.log")  
+  else:
+    if "Normal termination" in os.popen(f"tail -n 1 1_stage_reagent.log").read():
+      print(f"\033[1;33m1_stage_reagent.com já foi calculado\033[0;38m", flush=True)
+    else:
+      if (os.system(f"g09 < 1_stage_reagent.com > 1_stage_reagent.log")) != 0:
+        if ("Error termination request processed by link 9999" in os.popen(f"tail -n 20 1_stage_reagent.log").read()):
+          print("\033[1;33mErro de base, substituindo por m062 e tentando novamente\033[0;38m", flush=True)
+          os.system(f"g09 < 1_stage_reagent.com > 1_stage_reagent.log")
   for confor_index in range(int(os.environ["conf_num"])):
     print(f"\033[1;34mStart 1_stage_conformero_{confor_index}.com\033[0;38m", flush=True)
     if os.path.exists("1_stage"):
