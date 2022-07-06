@@ -121,9 +121,9 @@ def run_job():
   print(f"\033[1;34mStart 1_stage_mol.com\033[0;38m", flush=True)
   if "Normal termination" in os.popen(f"tail -n 1 1_stage_mol.log").read():
     print(f"\033[1;33m1_stage_mol.com já foi calculado\033[0;38m", flush=True)
-    calcula_fukui()
   else:
-    os.system(f"g09 < 1_stage_mol.com > 1_stage_reagent.log")  
+    os.system(f"g09 < 1_stage_mol.com > 1_stage_mol.log")  
+  calcula_fukui()
   print("\n\033[1;34m------- End Job -------\033[0;38m", flush=True)
   creditos()
 
