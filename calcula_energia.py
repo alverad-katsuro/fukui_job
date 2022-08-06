@@ -72,7 +72,7 @@ def rankeamento():
     try:
       reagent = float(reagent[0][3:])
     except IndexError:
-      print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, reagent sem HF= \033[0;38m", flush=True)
+      print("\033[1;33mErro no rankeamento do reagent sem HF= \033[0;38m", flush=True)
       exit(1)
     while (len(log_gaus) > 0):
       nome_arquivo = log_gaus.pop()
