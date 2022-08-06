@@ -185,7 +185,7 @@ def nbo_charge():
     fukui["fk+"] = fukui["n+1"] - fukui["n"]
     fukui["fk-"] = fukui["n"] - fukui["n-1"]
     fukui["fk0"] = (fukui["n+1"] - fukui["n-1"]) / 2
-    fukui.to_csv("fukui_nbo_charge.csv", index=False)
+    fukui.to_csv(f"fukui_nbo_{os.environ['SLURM_JOB_NAME']}.csv", index=False)
     return fukui
 
 def mulliken():
@@ -222,7 +222,7 @@ def mulliken():
     fukui["fk+"] = fukui["n+1"] - fukui["n"]
     fukui["fk-"] = fukui["n"] - fukui["n-1"]
     fukui["fk0"] = (fukui["n+1"] - fukui["n-1"]) / 2
-    fukui.to_csv("fukui_mulliken.csv", index=False)
+    fukui.to_csv(f"fukui_mulliken_{os.environ['SLURM_JOB_NAME']}.csv", index=False)
     return fukui
 
 def main():
