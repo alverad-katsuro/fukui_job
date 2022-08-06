@@ -139,7 +139,7 @@ def verifica_fuk_cargas(lista, value):
 
 def nbo_charge():
     dataframes = {}
-    arquivos = os.popen("ls 3_stage_rank_*_fk*.log").read().split("\n")[:3]
+    arquivos = os.popen("ls 2_stage_fukui*.log").read().split("\n")[:3]
     arquivos.sort()
     for fu in arquivos:
         orbitais = os.popen("awk '/Summary of Natural Population Analysis:/{f=1;next} /=======================================================================/{f=0;next} f' " + fu).read()
@@ -156,11 +156,11 @@ def nbo_charge():
                 df = pd.DataFrame(corpo, columns=cabecalho)
                 df = df.apply(pd.to_numeric, errors='ignore')
                 data_orbi.append(df)
-            if "fk+" in fu:
-                dataframes["n-1"] = (verifica_fuk_cargas(data_orbi, 1))
-            elif "fk-" in fu:
-                dataframes["n+1"] = (verifica_fuk_cargas(data_orbi, -1))
-            elif "fk0" in fu:
+            if "fukui+" in fu:
+                dataframes["n-1"] = (verifica_fuk_cargas(data_orbi, -1))
+            elif "fukui-" in fu:
+                dataframes["n+1"] = (verifica_fuk_cargas(data_orbi, 1))
+            elif "fukui0" in fu:
                 dataframes["n"] = (verifica_fuk_cargas(data_orbi, 0))
         else:
             orbitais = orbitais.split("\n")[3:]
@@ -169,11 +169,11 @@ def nbo_charge():
             corpo = []
             for linha in orbitais:
                 corpo.append(linha.split())
-            if "fk+" in fu:
+            if "fukui+" in fu:
                 dataframes["n-1"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
-            elif "fk-" in fu:
+            elif "fukui-" in fu:
                 dataframes["n+1"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
-            elif "fk0" in fu:
+            elif "fukui0" in fu:
                 dataframes["n"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
     fukui = pd.DataFrame(columns=["No", "Atom", "n", "n+1", "n-1", "fk+", "fk-", "fk0"])
     fukui["No"] = dataframes["n"].No
@@ -190,10 +190,11 @@ def nbo_charge():
 
 def mulliken():
     dataframes = {}
-    arquivos = os.popen("ls 3_stage_rank_*_fk*.log").read().split("\n")[:3]
+    arquivos = os.popen("ls 2_stage_fukui*.log").read().split("\n")[:3]
     arquivos.sort()
+    print(arquivos)
     for fu in arquivos:
-        if "fk0" in fu:
+        if "fukui0" in fu:
             orbitais = os.popen("awk '/ Mulliken charges:/{f=1;next} / Sum of Mulliken charges = /{f=0;next} f' " + fu).read()
             orbitais = orbitais.split("\n")[1:-1]
             corpo = []
@@ -205,13 +206,12 @@ def mulliken():
             corpo = []
             for linha in orbitais:
                 corpo.append(linha.split()[:-1])
-        if "fk+" in fu:
+        if "fukui+" in fu:
             dataframes["n-1"] = pd.DataFrame(data=corpo, columns=['No', 'Atom','Charge'])
-        elif "fk-" in fu:
+        elif "fukui-" in fu:
             dataframes["n+1"] = pd.DataFrame(data=corpo, columns=['No', 'Atom','Charge'])
-        elif "fk0" in fu:
+        elif "fukui0" in fu:
             dataframes["n"] = pd.DataFrame(data=corpo, columns=['No', 'Atom','Charge'])
-
     fukui = pd.DataFrame(columns=["No", "Atom","n", "n+1", "n-1", "fk+", "fk-", "fk0"])
     fukui["No"] = dataframes["n"].No
     fukui["Atom"] = dataframes["n"].Atom
