@@ -202,8 +202,8 @@ def cria_lanza(job_name):
     the_file.write("module load gaussian/09\n\n")
     for env in args.keys():
       the_file.write(f"export {env}={args[env]}\n")
-    the_file.write("chmod +x run_calcula_fukui.py\n")
-    the_file.write("./run_calcula_fukui.py --run-job 1\n\n")
+    the_file.write("chmod +x run_calcula_energia.py\n")
+    the_file.write("./run_calcula_energia.py --run-job 1\n\n")
     the_file.write("date;")
     the_file.write("echo \"End job\"\n\n")
 
