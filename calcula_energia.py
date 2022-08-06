@@ -98,7 +98,7 @@ def rankeamento():
       rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ STATUS_FUKUI\n")
       for key in ordem_melhores:
         print(key)
-        rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[nome_arquivo]))    
+        rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key.split('/')[1], energia = energias[key]))    
         rank_index += 1
 
 def modulo_verifica_freq(nome_do_arquivo):
@@ -242,22 +242,6 @@ def sub_rotina(dataframe):
     os.system(f"echo '{job_name}' >> {args['storage_path']}/jobs_index.txt")
     os.system(f"cp {__file__} {args['storage_path']}/{job_name}/run_{__file__.split('/')[-1]}")
 
-def sub_opt_to_m062(confor_index):
-  global args
-  com_in = os.popen(f"obabel pdb/0_stage_conformero_{confor_index}.pdb -o com").readlines()[4:]
-  with open(f"1_stage_conformero_{confor_index}.com", "w") as com:
-      com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write(f"%Chk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n m062x/6-311G(d,p) Opt\n")
-      com.write(f"\n {os.environ['SLURM_JOB_NAME']}\n")
-      com.write("".join(com_in))
-      com.write("--Link1--\n")
-      com.write(f"%NProcShared={os.environ['threads']}\n")
-      com.write(f"%Oldchk=1_stage_conformero_{confor_index}.chk\n")
-      com.write("#n m062x/6-311G(d,p) geom=check scrf=(SMD,solvent=water) scf=maxcycle=1000 maxdisk=200Gb\n")
-      com.write(f"\n {os.environ['SLURM_JOB_NAME']}_solv\n")
-      com.write("\n0  1\n")
-
 def run_job():
   print(f"\033[1;34mStart 1_stage_reagent.com\033[0;38m", flush=True)
   if os.path.exists("1_stage"):
@@ -286,9 +270,7 @@ def run_job():
       else:
         if (os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")) != 0:
           if ("Error termination request processed by link 9999" in os.popen(f"tail -n 20 1_stage_conformero_{confor_index}.log").read()):
-            print("\033[1;33mErro de base, substituindo por m062 e tentando novamente\033[0;38m", flush=True)
-            sub_opt_to_m062(confor_index)
-            os.system(f"g09 < 1_stage_conformero_{confor_index}.com > 1_stage_conformero_{confor_index}.log")
+            print(f"\033[1;33mErro no conformero {confor_index}\033[0;38m", flush=True)
   print("\033[1;34mCalculando RANK\033[0;38m", flush=True)
   rankeamento()
   if not os.path.exists("1_stage"):
