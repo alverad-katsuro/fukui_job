@@ -128,6 +128,7 @@ def run_job():
     os.system(f"g09 < 1_stage_mol.com > 1_stage_mol.log")  
   calcula_fukui()
   print("\n\033[1;34m------- End Job -------\033[0;38m", flush=True)
+  os.system(f"mv ../{os.environ['PWD'].split('/')[-1]} ../done_{os.environ['PWD'].split('/')[-1]}")
   creditos()
 
 def verifica_fuk_cargas(lista, value):

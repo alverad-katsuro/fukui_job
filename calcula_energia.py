@@ -284,6 +284,7 @@ def run_job():
   if os.environ["STATUS_FREQ"] == "TRUE":
     print("\033[1;34mAchei a frequencia\033[0;38m", flush=True)
     print("\033[1;34mEnd Job!\033[0;38m", flush=True)
+    os.system(f"mv ../{os.environ['PWD'].split('/')[-1]} ../done_{os.environ['PWD'].split('/')[-1]}")
   creditos()
 
 def main():

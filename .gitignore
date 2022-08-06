@@ -10,3 +10,5 @@ lanzaFukui.sh
 data/
 run_calcula_fukui.py
 *.out
+energia_calc/
+jobs-old/
