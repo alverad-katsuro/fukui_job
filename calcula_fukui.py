@@ -48,7 +48,7 @@ def generate_mol(mol, job_name):
 def calcula_fukui():
   print(f"\033[1;34mStart 2_stage_fukui0.com\033[0;38m", flush=True)
   if "Normal termination" in os.popen(f"tail -n 1 2_stage_fukui0.log").read():
-    print(f"\033[1;33m1_stage_mol.com já foi calculado\033[0;38m", flush=True)
+    print(f"\033[1;33m2_stage_fukui0.com já foi calculado\033[0;38m", flush=True)
   else:
     os.system(f"g09 < 2_stage_fukui0.com > 2_stage_fukui0.log")
   print(f"\033[1;34mStart 2_stage_fukui+.com\033[0;38m", flush=True)
