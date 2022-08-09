@@ -220,6 +220,8 @@ def create_run_all():
     run_all.write("    os.system('sbatch lanzaFukui.sh')\n")
     run_all.write("  except NotADirectoryError:\n")
     run_all.write("    pass\n")
+    run_all.write("  except FileNotFoundError:\n")
+    run_all.write("    print(f'{pasta} provavelmente ja foi calculado')\n")
   os.system(f"chmod +x {args['storage_path']}/run_all.py")
 
 def submete_jobs():
