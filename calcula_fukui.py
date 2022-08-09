@@ -171,11 +171,11 @@ def nbo_charge():
             for linha in orbitais:
                 corpo.append(linha.split())
             if "fukui+" in fu:
-                dataframes["n-1"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
+                dataframes["n-1"] = pd.DataFrame(corpo[:-1], columns=cabecalho)
             elif "fukui-" in fu:
-                dataframes["n+1"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
+                dataframes["n+1"] = pd.DataFrame(corpo[:-1], columns=cabecalho)
             elif "fukui0" in fu:
-                dataframes["n"] = pd.DataFrame(corpo[:-3], columns=cabecalho)
+                dataframes["n"] = pd.DataFrame(corpo[:-1], columns=cabecalho)
     fukui = pd.DataFrame(columns=["No", "Atom", "n", "n+1", "n-1", "fk+", "fk-", "fk0"])
     fukui["No"] = dataframes["n"].No
     fukui["Atom"] = dataframes["n"].Atom
