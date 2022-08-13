@@ -60,9 +60,12 @@ def rankeamento():
     print("\033[1;34mRankeando os Conformeros (PRODUCT - REAGENT)\n\033[0;38m", flush=True)
     log_gaus = os.popen("ls 1_stage_conformero_*.log").read().split()
     log_gaus_reg = os.popen("ls 1_stage_reagent.log").read().split()
+    ta_na_pasta = False
     if len(log_gaus_reg) == 0:
+      ta_na_pasta = True
       log_gaus_reg = os.popen("ls 1_stage/1_stage_reagent.log").read().split()
     if len(log_gaus) == 0:
+      ta_na_pasta = True
       log_gaus = os.popen("ls 1_stage/1_stage_conformero_*.log").read().split()
     energias = {}
     reagent = []
@@ -98,7 +101,10 @@ def rankeamento():
       rank.write("RANK NAME INDEX ENERGY(Kcal/mol) STATUS_FREQ STATUS_FUKUI\n")
       for key in ordem_melhores:
         print(key)
-        rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key.split('/')[1], energia = energias[key]))    
+        if ta_na_pasta:
+          rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key.split('/')[1], energia = energias[key]))    
+        else:
+          rank.write("{rank} {nome} {index} {energia}\n".format(rank = rank_index, index = int(key.replace('.','_').split('_')[-2]), nome = key, energia = energias[key]))    
         rank_index += 1
 
 def modulo_verifica_freq(nome_do_arquivo):
