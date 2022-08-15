@@ -85,7 +85,7 @@ def rankeamento():
         if "HF=" in elemento:
           energias[nome_arquivo].append(elemento.replace("\n ", "").replace(" ", ""))
       try:
-        energias[nome_arquivo] = (float(energias[nome_arquivo][0][3:]) - reagent) / 627.5
+        energias[nome_arquivo] = (float(energias[nome_arquivo][0][3:]) - reagent) * 627.5
       except IndexError:
         print(f"\033[1;33mErro no rankeamento do {nome_arquivo}, um dos calculos não rodou (product HF=)\033[0;38m", flush=True)
         energias.pop(nome_arquivo)
